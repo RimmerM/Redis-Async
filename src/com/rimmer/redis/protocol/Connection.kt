@@ -21,6 +21,9 @@ interface Connection {
      */
     fun command(command: ByteArray, argCount: Int, args: ByteBuf, f: (Response?, Throwable?) -> Unit)
 
+    /** Allocates a buffer to write command arguments into. */
+    fun buffer(): ByteBuf
+
     /** Closes this connection. */
     fun disconnect()
 
@@ -53,7 +56,7 @@ class Response(val int: Long, val string: String?, val data: ByteBuf?, val array
 fun connect(group: EventLoopGroup, host: String, port: Int, f: (Connection?, Throwable?) -> Unit) {
     val channelType = if(group is EpollEventLoopGroup) EpollSocketChannel::class.java else NioSocketChannel::class.java
 
-    val protocol = ProtocolHandler()
+    val protocol = ProtocolHandler(f)
 
     // Create the connection channel.
     val bootstrap = Bootstrap()
@@ -68,11 +71,7 @@ fun connect(group: EventLoopGroup, host: String, port: Int, f: (Connection?, Thr
 
     // Try to connect to the database.
     bootstrap.connect(host, port).addListener {
-        if(it.isSuccess) {
-            f(protocol, null)
-        } else {
-            f(null, it.cause())
-        }
+        if(!it.isSuccess) { f(null, it.cause()) }
     }
 }
 

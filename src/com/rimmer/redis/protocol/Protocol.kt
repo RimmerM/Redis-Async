@@ -8,7 +8,9 @@ import java.util.*
 
 class ArrayBuilder(var length: Int, val target: Array<Response?>)
 
-class ProtocolHandler: ChannelInboundHandlerAdapter(), Connection {
+class ProtocolHandler(
+    val connectCallback: (Connection?, Throwable?) -> Unit
+): ChannelInboundHandlerAdapter(), Connection {
     override val connected: Boolean get() = currentContext != null
     override val idleTime: Long get() = if(responseQueue.isNotEmpty()) 0L else System.nanoTime() - commandEnd
 
@@ -38,15 +40,21 @@ class ProtocolHandler: ChannelInboundHandlerAdapter(), Connection {
         currentContext!!.writeAndFlush(args, currentContext!!.voidPromise())
     }
 
+    override fun buffer() = currentContext!!.alloc().buffer()
+
     override fun disconnect() {
         val exception = RedisException("Connection is being closed")
         responseQueue.forEach {it(null, exception)}
         currentContext?.close()
     }
 
+    override fun channelActive(context: ChannelHandlerContext) {
+        this.currentContext = context
+        connectCallback(this, null)
+    }
+
     /** Entry point of incoming traffic; handles reading packets and fragmentation. */
     override fun channelRead(context: ChannelHandlerContext, source: Any) {
-        currentContext = context
         val packet = source as ByteBuf
         while(packet.readableBytes() > 0) handleValue(packet)
     }
@@ -109,8 +117,8 @@ class ProtocolHandler: ChannelInboundHandlerAdapter(), Connection {
 
     fun handleSimpleString(packet: ByteBuf) {
         val length = packet.bytesBefore('\r'.toByte())
-        val value = packet.toString(0, length, Charsets.UTF_8)
-        packet.skipBytes(2)
+        val value = packet.toString(packet.readerIndex(), length, Charsets.UTF_8)
+        packet.skipBytes(length + 2)
         onResponse(Response(0, value, null, null, false))
     }
 
@@ -121,8 +129,8 @@ class ProtocolHandler: ChannelInboundHandlerAdapter(), Connection {
 
     fun handleError(packet: ByteBuf) {
         val length = packet.bytesBefore('\r'.toByte())
-        val errorText = packet.toString(0, length, Charsets.UTF_8)
-        packet.skipBytes(2)
+        val errorText = packet.toString(packet.readerIndex(), length, Charsets.UTF_8)
+        packet.skipBytes(length + 2)
         onError(RedisException(errorText))
     }
 
