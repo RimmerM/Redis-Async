@@ -44,12 +44,12 @@ fun writeNewlineNumber(target: ByteBuf, value: Long) {
 private fun writeNumber(value: Long, newline: Boolean): ByteArray {
     val negative = value < 0
     var abs = Math.abs(value)
-    var end = if(value == 0L) 0 else Math.log10(abs.toDouble()).toInt() + if(negative) 2 else 1
+    var end = (if(value == 0L) 0 else Math.log10(abs.toDouble()).toInt()) + if(negative) 2 else 1
 
     val bytes = ByteArray(if(newline) end + 2 else end)
     if(newline) {
-        bytes[end] = '\n'.toByte()
-        bytes[end + 1] = '\r'.toByte()
+        bytes[end] = '\r'.toByte()
+        bytes[end + 1] = '\n'.toByte()
     }
 
     if(negative) {
@@ -57,8 +57,9 @@ private fun writeNumber(value: Long, newline: Boolean): ByteArray {
     }
 
     var next = abs
-    while(next > 0) {
+    while(true) {
         next /= 10
+        if(next <= 0) break
         end--
 
         bytes[end] = ('0'.toLong() + abs % 10).toByte()
