@@ -4,6 +4,7 @@ import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
+import java.nio.charset.Charset
 import java.util.*
 
 class ArrayBuilder(var length: Int, val target: Array<Response?>)
@@ -16,6 +17,9 @@ class ProtocolHandler(
 
     /** Contains in-flight commands waiting for a response. */
     private val responseQueue: Queue<(Response?, Throwable?) -> Unit> = LinkedList()
+
+    /** Contains channel listeners if the connection is in channel mode. */
+    private val channelListeners = HashMap<Int, (ByteBuf?, Throwable?) -> Unit>()
 
     /** The context this handler is currently bound to. */
     private var currentContext: ChannelHandlerContext? = null
@@ -30,14 +34,33 @@ class ProtocolHandler(
     /** The time the last command returned. */
     private var commandEnd = System.nanoTime()
 
-    override fun command(command: ByteArray, argCount: Int, args: ByteBuf, f: (Response?, Throwable?) -> Unit) {
-        responseQueue.offer(f)
-        val buffer = currentContext!!.alloc().buffer(128)
-        writeArray(buffer, argCount + 1)
-        writeBulkString(buffer, command)
+    /** Indicates that the connection is in channel mode and cannot send normal commands. */
+    private var isChannel = false
 
-        currentContext!!.write(buffer, currentContext!!.voidPromise())
-        currentContext!!.writeAndFlush(args, currentContext!!.voidPromise())
+    override fun command(command: ByteBuf, f: (Response?, Throwable?) -> Unit) {
+        if(isChannel) {
+            throw IllegalArgumentException("Cannot execute normal commands while in channel mode.")
+        }
+
+        responseQueue.offer(f)
+        currentContext!!.writeAndFlush(command, currentContext!!.voidPromise())
+    }
+
+    override fun subscribe(channel: String, isPattern: Boolean, f: (ByteBuf?, Throwable?) -> Unit) {
+        isChannel = true
+        val hash = Arrays.hashCode(channel.toByteArray())
+        channelListeners[hash] = f
+        val buffer = currentContext!!.alloc().buffer(32)
+        val command = if(isPattern) psubscribe(channel, buffer) else subscribe(channel, buffer)
+        currentContext!!.writeAndFlush(command)
+    }
+
+    override fun unsubscribe(channel: String, isPattern: Boolean) {
+        val hash = Arrays.hashCode(channel.toByteArray())
+        channelListeners.remove(hash)
+        val buffer = currentContext!!.alloc().buffer(32)
+        val command = if(isPattern) punsubscribe(channel, buffer) else unsubscribe(channel, buffer)
+        currentContext!!.writeAndFlush(command)
     }
 
     override fun buffer() = currentContext!!.alloc().buffer()
@@ -66,11 +89,21 @@ class ProtocolHandler(
             val end = System.nanoTime()
             commandEnd = end
 
-            val handler = responseQueue.poll()
-            if(handler == null) {
-                throw IllegalStateException("Received a response with no associated handler")
+            if(isChannel) {
+                val message = response.array!!
+                val kind = bulkHash(message[0].data!!)
+                val channel = bulkHash(message[1].data!!)
+
+                if(kind == messageHash) {
+                    channelListeners[channel]?.invoke(message[2].data!!, null)
+                }
             } else {
-                handler(response, null)
+                val handler = responseQueue.poll()
+                if (handler == null) {
+                    throw IllegalStateException("Received a response with no associated handler")
+                } else {
+                    handler(response, null)
+                }
             }
         } else if(!response.isNull) {
             array.target[array.length] = response
@@ -102,6 +135,7 @@ class ProtocolHandler(
                 ':'.toInt() -> handleInt(packet)
                 '$'.toInt() -> handleBulkString(packet)
                 '*'.toInt() -> handleArray(packet)
+                else -> throw IllegalArgumentException("Unknown Redis value type '${type.toChar()}'")
             }
         } else {
             val readable = Math.min(stringBytesLeft, packet.readableBytes())
@@ -169,7 +203,8 @@ class ProtocolHandler(
     fun readInt(packet: ByteBuf): Long {
         var value = 0L
         var sign = 1
-        val read = packet.forEachByte {
+        val start = packet.readerIndex()
+        val read = packet.forEachByte(start, packet.readableBytes()) {
             if(it == '\r'.toByte()) {
                 false
             } else if(it == '-'.toByte()) {
@@ -183,7 +218,19 @@ class ProtocolHandler(
                 true
             }
         }
-        packet.skipBytes(read + 2)
+        packet.readerIndex(read + 2)
         return value * sign
+    }
+
+    fun bulkHash(string: ByteBuf): Int {
+        val bytes = ByteArray(string.readableBytes())
+        string.readBytes(bytes)
+        return Arrays.hashCode(bytes)
+    }
+
+    companion object {
+        val subscribeHash = Arrays.hashCode("subscribe".toByteArray())
+        val unsubscribeHash = Arrays.hashCode("unsubscribe".toByteArray())
+        val messageHash = Arrays.hashCode("message".toByteArray())
     }
 }
