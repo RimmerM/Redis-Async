@@ -15,11 +15,28 @@ import io.netty.channel.socket.nio.NioSocketChannel
 interface Connection {
     /**
      * Executes a Redis command.
-     * @param command The command type to execute.
-     * @param argCount The number of arguments in args.
-     * @param args A serialized RESP array of command arguments.
+     * @param command The command buffer to execute.
      */
-    fun command(command: ByteArray, argCount: Int, args: ByteBuf, f: (Response?, Throwable?) -> Unit)
+    fun command(command: ByteBuf, f: (Response?, Throwable?) -> Unit)
+
+    /**
+     * Subscribes to the provided channel name.
+     * After this is called the connection goes into channel mode.
+     * This means that it can only be used to subscribe to/unsubscribe from other channels, not issue normal commands.
+     * Any calls to command() will fail.
+     * @param channel The name of the channel to receive push messages from.
+     * @param isPattern If set, the channel name contains a pattern that will be matched on.
+     * @param f The function that will be called whenever a message is received.
+     * If the subscription fails, it is called with an error.
+     */
+    fun subscribe(channel: String, isPattern: Boolean = false, f: (ByteBuf?, Throwable?) -> Unit)
+
+    /**
+     * Unsubscribes from the provided channel if there was any listener on it.
+     * No more messages will be received from this channel.
+     * @param isPattern If set, the channel name contains a pattern that was matched on.
+     */
+    fun unsubscribe(channel: String, isPattern: Boolean)
 
     /** Allocates a buffer to write command arguments into. */
     fun buffer(): ByteBuf
