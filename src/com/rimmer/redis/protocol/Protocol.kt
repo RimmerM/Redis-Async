@@ -1,10 +1,10 @@
 package com.rimmer.redis.protocol
 
+import com.rimmer.redis.command.*
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
-import java.nio.charset.Charset
 import java.util.*
 
 class ArrayBuilder(var length: Int, val target: Array<Response?>)
