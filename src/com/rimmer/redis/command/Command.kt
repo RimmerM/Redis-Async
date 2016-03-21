@@ -103,6 +103,12 @@ fun get(key: String, target: ByteBuf = Unpooled.buffer(32)) = singleArg(Command.
 fun set(key: String, value: String, target: ByteBuf = Unpooled.buffer(32)) = set(key, value.toByteArray(), target)
 fun set(key: String, value: ByteArray, target: ByteBuf = Unpooled.buffer(32)) = doubleArg(Command.SET, key.toByteArray(), value, target)
 
+fun hget(key: String, field: String, target: ByteBuf = Unpooled.buffer(32)) = doubleArg(Command.HGET, key, field, target)
+
+fun hset(key: String, field: String, value: ByteArray, target: ByteBuf = Unpooled.buffer(32)) =
+    tripleArg(Command.HSET, key.toByteArray(), field.toByteArray(), value, target)
+fun hset(key: String, field: String, value: String, target: ByteBuf = Unpooled.buffer(32)) = hset(key, field, value.toByteArray(), target)
+
 fun exists(vararg keys: String, target: ByteBuf = Unpooled.buffer(32)) = multiArg(Command.EXISTS, keys, target)
 fun del(vararg keys: String, target: ByteBuf = Unpooled.buffer(32)) = multiArg(Command.DEL, keys, target)
 fun rpush(key: String, vararg values: String, target: ByteBuf = Unpooled.buffer(32)) = multiArg(Command.RPUSH, key, values, target)
