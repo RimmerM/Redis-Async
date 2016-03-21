@@ -36,9 +36,10 @@ enum class Keyword {
 }
 
 /** Writes the common header of a Redis command. */
-fun commandHeader(target: ByteBuf, type: ByteArray, argCount: Int) {
+fun commandHeader(target: ByteBuf, type: ByteArray, argCount: Int): ByteBuf {
     writeArray(target, argCount + 1)
     writeBulkString(target, type)
+    return target
 }
 
 fun singleArg(command: Command, arg: String, target: ByteBuf) =
