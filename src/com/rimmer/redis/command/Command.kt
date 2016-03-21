@@ -109,6 +109,18 @@ fun hset(key: String, field: String, value: ByteArray, target: ByteBuf = Unpoole
     tripleArg(Command.HSET, key.toByteArray(), field.toByteArray(), value, target)
 fun hset(key: String, field: String, value: String, target: ByteBuf = Unpooled.buffer(32)) = hset(key, field, value.toByteArray(), target)
 
+fun hincrBy(key: String, field: String, increment: Long, target: ByteBuf = Unpooled.buffer(32)) =
+    tripleArg(Command.HINCRBY, key, field, increment.toString(), target)
+
+fun hincrByFloat(key: String, field: String, increment: Double, target: ByteBuf = Unpooled.buffer(32)) =
+    tripleArg(Command.HINCRBYFLOAT, key, field, increment.toString(), target)
+
+fun incrBy(key: String, increment: Long, target: ByteBuf = Unpooled.buffer(32)) =
+    doubleArg(Command.INCRBY, key, increment.toString(), target)
+
+fun incrByFloat(key: String, increment: Double, target: ByteBuf = Unpooled.buffer(32)) =
+    doubleArg(Command.INCRBYFLOAT, key, increment.toString(), target)
+
 fun exists(vararg keys: String, target: ByteBuf = Unpooled.buffer(32)) = multiArg(Command.EXISTS, keys, target)
 fun del(vararg keys: String, target: ByteBuf = Unpooled.buffer(32)) = multiArg(Command.DEL, keys, target)
 fun rpush(key: String, vararg values: String, target: ByteBuf = Unpooled.buffer(32)) = multiArg(Command.RPUSH, key, values, target)
