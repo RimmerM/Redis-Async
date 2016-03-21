@@ -137,6 +137,22 @@ fun zrange_byscore_withscores(key: String, min: String, max: String, offset: Int
 
 fun srandmember(key: String, target: ByteBuf = Unpooled.buffer(32)) = singleArg(Command.SRANDMEMBER, key, target)
 
+fun hmget(key: String, vararg fields: String, target: ByteBuf = Unpooled.buffer(64)) =
+    multiArg(Command.HMGET, key, fields, target)
+
+fun hmset(key: String, vararg keyValues: Pair<String, String>, target: ByteBuf = Unpooled.buffer(64)): ByteBuf {
+    commandHeader(target, Command.HMSET.bytes, 1 + keyValues.size * 2)
+    writeBulkString(target, key)
+    for(a in keyValues) {
+        writeBulkString(target, a.first)
+        writeBulkString(target, a.second)
+    }
+    return target
+}
+
+fun multi(target: ByteBuf = Unpooled.buffer(16)) = commandHeader(target, Command.MULTI.bytes, 0)
+fun exec(target: ByteBuf = Unpooled.buffer(16)) = commandHeader(target, Command.EXEC.bytes, 0)
+
 private fun rangeByScore(command: Command, key: String, min: String, max: String, offset: Int, count: Int, target: ByteBuf): ByteBuf {
     commandHeader(target, command.bytes, 6)
     writeBulkString(target, key)
