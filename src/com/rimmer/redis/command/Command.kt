@@ -115,15 +115,23 @@ fun hincrBy(key: String, field: String, increment: Long, target: ByteBuf = Unpoo
 fun hincrByFloat(key: String, field: String, increment: Double, target: ByteBuf = Unpooled.buffer(32)) =
     tripleArg(Command.HINCRBYFLOAT, key, field, increment.toString(), target)
 
+fun incr(key: String, target: ByteBuf = Unpooled.buffer(32)) = singleArg(Command.INCR, key, target)
+
 fun incrBy(key: String, increment: Long, target: ByteBuf = Unpooled.buffer(32)) =
     doubleArg(Command.INCRBY, key, increment.toString(), target)
 
 fun incrByFloat(key: String, increment: Double, target: ByteBuf = Unpooled.buffer(32)) =
     doubleArg(Command.INCRBYFLOAT, key, increment.toString(), target)
 
+fun decr(key: String, target: ByteBuf = Unpooled.buffer(32)) = singleArg(Command.DECR, key, target)
+
+fun decrBy(key: String, increment: Long, target: ByteBuf = Unpooled.buffer(32)) =
+    doubleArg(Command.DECRBY, key, increment.toString(), target)
+
 fun exists(vararg keys: String, target: ByteBuf = Unpooled.buffer(32)) = multiArg(Command.EXISTS, keys, target)
 fun del(vararg keys: String, target: ByteBuf = Unpooled.buffer(32)) = multiArg(Command.DEL, keys, target)
 fun rpush(key: String, vararg values: String, target: ByteBuf = Unpooled.buffer(32)) = multiArg(Command.RPUSH, key, values, target)
+fun lpush(key: String, vararg values: String, target: ByteBuf = Unpooled.buffer(32)) = multiArg(Command.LPUSH, key, values, target)
 fun sadd(key: String, vararg values: String, target: ByteBuf = Unpooled.buffer(32)) = multiArg(Command.SADD, key, values, target)
 fun srem(key: String, vararg values: String, target: ByteBuf = Unpooled.buffer(32)) = multiArg(Command.SREM, key, values, target)
 fun zrem(key: String, vararg values: String, target: ByteBuf = Unpooled.buffer(32)) = multiArg(Command.ZREM, key, values, target)
