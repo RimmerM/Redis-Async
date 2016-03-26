@@ -73,7 +73,7 @@ fun tripleArg(command: Command, arg0: ByteArray, arg1: ByteArray, arg2: ByteArra
 }
 
 fun multiArg(command: Command, args: Array<out ByteArray>, target: ByteBuf): ByteBuf {
-    commandHeader(target, command.bytes, 2)
+    commandHeader(target, command.bytes, args.size)
     for(a in args) { writeBulkString(target, a) }
     return target
 }
@@ -85,7 +85,7 @@ fun multiArg(command: Command, args: Array<out String>, target: ByteBuf): ByteBu
 }
 
 fun multiArg(command: Command, key: String, args: Array<out String>, target: ByteBuf): ByteBuf {
-    commandHeader(target, command.bytes, args.size)
+    commandHeader(target, command.bytes, args.size + 1)
     writeBulkString(target, key)
     for(a in args) { writeBulkString(target, a) }
     return target
