@@ -105,7 +105,7 @@ class ProtocolHandler(
                     handler(response, null)
                 }
             }
-        } else if(!response.isNull) {
+        } else {
             array.target[array.length] = response
             array.length++
 
