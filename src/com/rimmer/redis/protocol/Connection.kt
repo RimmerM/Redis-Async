@@ -69,9 +69,10 @@ class Response(val int: Long, val string: String?, val data: ByteBuf?, val array
  * @param group The event loop group to run the client on.
  * @param host The database host to connect to.
  * @param port The port to use for connecting.
+ * @param useNative Use native transport instead of NIO (Linux only)
  */
-fun connect(group: EventLoopGroup, host: String, port: Int, f: (Connection?, Throwable?) -> Unit) {
-    val channelType = if(group is EpollEventLoopGroup) EpollSocketChannel::class.java else NioSocketChannel::class.java
+fun connect(group: EventLoopGroup, host: String, port: Int, useNative: Boolean = false, f: (Connection?, Throwable?) -> Unit) {
+    val channelType = if(useNative) EpollSocketChannel::class.java else NioSocketChannel::class.java
 
     val protocol = ProtocolHandler(f)
 
