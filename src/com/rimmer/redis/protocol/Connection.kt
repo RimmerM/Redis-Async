@@ -7,6 +7,7 @@ import io.netty.channel.Channel
 import io.netty.channel.ChannelInitializer
 import io.netty.channel.ChannelOption
 import io.netty.channel.EventLoopGroup
+import io.netty.channel.epoll.Epoll
 import io.netty.channel.epoll.EpollEventLoopGroup
 import io.netty.channel.epoll.EpollSocketChannel
 import io.netty.channel.socket.nio.NioSocketChannel
@@ -72,7 +73,11 @@ class Response(val int: Long, val string: String?, val data: ByteBuf?, val array
  * @param useNative Use native transport instead of NIO (Linux only)
  */
 fun connect(group: EventLoopGroup, host: String, port: Int, useNative: Boolean = false, f: (Connection?, Throwable?) -> Unit) {
-    val channelType = if(useNative) EpollSocketChannel::class.java else NioSocketChannel::class.java
+    val channelType = if(useNative && Epoll.isAvailable()) {
+        EpollSocketChannel::class.java
+    } else {
+        NioSocketChannel::class.java
+    }
 
     val protocol = ProtocolHandler(f)
 
