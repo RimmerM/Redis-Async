@@ -208,7 +208,7 @@ class ProtocolHandler(
             }
             true
         }
-        packet.readerIndex(start + length + 2)
+        packet.skipBytes(start + length + 2)
         return value * sign
     }
 
