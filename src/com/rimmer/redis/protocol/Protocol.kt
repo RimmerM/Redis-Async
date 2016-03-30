@@ -2,17 +2,17 @@ package com.rimmer.redis.protocol
 
 import com.rimmer.redis.command.*
 import io.netty.buffer.ByteBuf
-import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandlerContext
-import io.netty.channel.ChannelInboundHandlerAdapter
+import io.netty.handler.codec.ReplayingDecoder
+import java.io.IOException
 import java.util.*
 
 class ArrayBuilder(var length: Int, val target: Array<Response?>)
 
 class ProtocolHandler(
     val connectCallback: (Connection?, Throwable?) -> Unit
-): ChannelInboundHandlerAdapter(), Connection {
-    override val connected: Boolean get() = currentContext != null
+): ReplayingDecoder<Unit>(), Connection {
+    override val connected: Boolean get() = currentContext != null && currentContext!!.channel().isActive
     override val idleTime: Long get() = if(responseQueue.isNotEmpty()) 0L else System.nanoTime() - commandEnd
 
     /** Contains in-flight commands waiting for a response. */
@@ -26,10 +26,6 @@ class ProtocolHandler(
 
     /** Handles reading fragmented array data. */
     private var targetArray: Deque<ArrayBuilder> = ArrayDeque()
-
-    /** Handles reading fragmented string data. */
-    private var targetString: ByteBuf? = null
-    private var stringBytesLeft = 0
 
     /** The time the last command returned. */
     private var commandEnd = System.nanoTime()
@@ -76,14 +72,26 @@ class ProtocolHandler(
         connectCallback(this, null)
     }
 
-    /** Entry point of incoming traffic; handles reading packets and fragmentation. */
-    override fun channelRead(context: ChannelHandlerContext, source: Any) {
-        val packet = source as ByteBuf
+    /** Entry point of incoming traffic; handles reading packets and sending responses. */
+    override fun decode(context: ChannelHandlerContext, packet: ByteBuf, data: MutableList<Any>?) {
         while(packet.readableBytes() > 0) handleValue(packet)
+    }
+
+    /** Called when the channel becomes invalid. */
+    override fun channelInactive(context: ChannelHandlerContext) {
+        super.channelInactive(context)
+
+        // Fail any requests that were still pending.
+        val exception = IOException("The redis connection was closed.")
+        while(responseQueue.isNotEmpty()) {
+            responseQueue.poll().invoke(null, exception)
+        }
     }
 
     /** Handles a finished response packet. */
     fun onResponse(response: Response) {
+        checkpoint()
+
         val array = targetArray.peek()
         if(array == null) {
             val end = System.nanoTime()
@@ -118,6 +126,7 @@ class ProtocolHandler(
 
     /** Sends an error to the client. */
     fun onError(error: Throwable) {
+        checkpoint()
         val handler = responseQueue.poll()
         if(handler == null) {
             throw IllegalStateException("Received an error response with no associated handler")
@@ -127,25 +136,14 @@ class ProtocolHandler(
     }
 
     fun handleValue(packet: ByteBuf) {
-        if(targetString == null) {
-            val type = packet.readByte().toInt()
-            when (type) {
-                '+'.toInt() -> handleSimpleString(packet)
-                '-'.toInt() -> handleError(packet)
-                ':'.toInt() -> handleInt(packet)
-                '$'.toInt() -> handleBulkString(packet)
-                '*'.toInt() -> handleArray(packet)
-                else -> throw IllegalArgumentException("Unknown Redis value type '${type.toChar()}'")
-            }
-        } else {
-            val readable = Math.min(stringBytesLeft, packet.readableBytes())
-            stringBytesLeft -= readable
-            if(stringBytesLeft == 0) {
-                val buffer = Unpooled.wrappedBuffer(targetString, packet.readSlice(readable))
-                onResponse(Response(0, null, buffer, null, false))
-            } else {
-                targetString = Unpooled.wrappedBuffer(targetString, packet)
-            }
+        val type = packet.readByte().toInt()
+        when (type) {
+            '+'.toInt() -> handleSimpleString(packet)
+            '-'.toInt() -> handleError(packet)
+            ':'.toInt() -> handleInt(packet)
+            '$'.toInt() -> handleBulkString(packet)
+            '*'.toInt() -> handleArray(packet)
+            else -> throw IllegalArgumentException("Unknown Redis value type '${type.toChar()}'")
         }
     }
 
@@ -177,15 +175,9 @@ class ProtocolHandler(
             return
         }
 
-        // Read the byte array in chunks if needed.
-        if(packet.readableBytes() < length) {
-            targetString = packet
-            stringBytesLeft = length - packet.readableBytes()
-        } else {
-            val buffer = packet.readBytes(length)
-            packet.skipBytes(2)
-            onResponse(Response(0, null, buffer, null, false))
-        }
+        val buffer = packet.readSlice(length)
+        packet.skipBytes(2)
+        onResponse(Response(0, null, buffer, null, false))
     }
 
     fun handleArray(packet: ByteBuf) {
@@ -204,21 +196,19 @@ class ProtocolHandler(
         var value = 0L
         var sign = 1
         val start = packet.readerIndex()
-        val read = packet.forEachByte(start, packet.readableBytes()) {
-            if(it == '\r'.toByte()) {
-                false
-            } else if(it == '-'.toByte()) {
+        val length = packet.bytesBefore('\r'.toByte())
+        packet.forEachByte(start, length) {
+            if(it == '-'.toByte()) {
                 sign = -1
-                true
             } else {
                 val v = it - '0'.toByte()
                 if(v < 0 || v > 10) throw RedisException("Invalid response: cannot parse '$it' as integer")
                 value *= 10
                 value += v
-                true
             }
+            true
         }
-        packet.readerIndex(read + 2)
+        packet.readerIndex(start + length + 2)
         return value * sign
     }
 
