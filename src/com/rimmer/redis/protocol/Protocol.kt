@@ -7,7 +7,8 @@ import io.netty.handler.codec.ReplayingDecoder
 import java.io.IOException
 import java.util.*
 
-class ArrayBuilder(var length: Int, val target: Array<Response?>)
+internal class ArrayBuilder(var length: Int, val target: Array<Response?>)
+internal class WaitingCommand(val handler: (Response?, Throwable?) -> Unit, val startTime: Long)
 
 class ProtocolHandler(
     val connectCallback: (Connection?, Throwable?) -> Unit
@@ -16,7 +17,7 @@ class ProtocolHandler(
     override val idleTime: Long get() = if(responseQueue.isNotEmpty()) 0L else System.nanoTime() - commandEnd
 
     /** Contains in-flight commands waiting for a response. */
-    private val responseQueue: Queue<(Response?, Throwable?) -> Unit> = LinkedList()
+    private val responseQueue: Queue<WaitingCommand> = LinkedList()
 
     /** Contains channel listeners if the connection is in channel mode. */
     private val channelListeners = HashMap<Int, (ByteBuf?, Throwable?) -> Unit>()
@@ -38,7 +39,7 @@ class ProtocolHandler(
             throw IllegalArgumentException("Cannot execute normal commands while in channel mode.")
         }
 
-        responseQueue.offer(f)
+        responseQueue.offer(WaitingCommand(f, System.nanoTime()))
         currentContext!!.writeAndFlush(command, currentContext!!.voidPromise())
     }
 
@@ -63,7 +64,8 @@ class ProtocolHandler(
 
     override fun disconnect() {
         val exception = RedisException("Connection is being closed")
-        responseQueue.forEach {it(null, exception)}
+        responseQueue.forEach {failCommand(it, exception)}
+        responseQueue.clear()
         currentContext?.close()
     }
 
@@ -84,12 +86,12 @@ class ProtocolHandler(
         // Fail any requests that were still pending.
         val exception = IOException("The redis connection was closed.")
         while(responseQueue.isNotEmpty()) {
-            responseQueue.poll().invoke(null, exception)
+            failCommand(responseQueue.poll(), exception)
         }
     }
 
     /** Handles a finished response packet. */
-    fun onResponse(response: Response) {
+    private fun onResponse(response: Response) {
         checkpoint()
 
         val array = targetArray.peek()
@@ -107,10 +109,10 @@ class ProtocolHandler(
                 }
             } else {
                 val handler = responseQueue.poll()
-                if (handler == null) {
+                if(handler == null) {
                     throw IllegalStateException("Received a response with no associated handler")
                 } else {
-                    handler(response, null)
+                    succeedCommand(handler, response)
                 }
             }
         } else {
@@ -125,17 +127,35 @@ class ProtocolHandler(
     }
 
     /** Sends an error to the client. */
-    fun onError(error: Throwable) {
+    private fun onError(error: Throwable) {
         checkpoint()
         val handler = responseQueue.poll()
         if(handler == null) {
             throw IllegalStateException("Received an error response with no associated handler")
         } else {
-            handler(null, error)
+            failCommand(handler, error)
         }
     }
 
-    fun handleValue(packet: ByteBuf) {
+    private fun failCommand(command: WaitingCommand, reason: Throwable) {
+        try {
+            command.handler(null, reason)
+        } catch(e: Throwable) {
+            println("Exception in Redis command succeed handler:")
+            e.printStackTrace()
+        }
+    }
+
+    private fun succeedCommand(command: WaitingCommand, response: Response) {
+        try {
+            command.handler(response, null)
+        } catch(e: Throwable) {
+            println("Exception in Redis command failure handler:")
+            e.printStackTrace()
+        }
+    }
+
+    private fun handleValue(packet: ByteBuf) {
         val type = packet.readByte().toInt()
         when (type) {
             '+'.toInt() -> handleSimpleString(packet)
@@ -147,26 +167,26 @@ class ProtocolHandler(
         }
     }
 
-    fun handleSimpleString(packet: ByteBuf) {
+    private fun handleSimpleString(packet: ByteBuf) {
         val length = packet.bytesBefore('\r'.toByte())
         val value = packet.toString(packet.readerIndex(), length, Charsets.UTF_8)
         packet.skipBytes(length + 2)
         onResponse(Response(0, value, null, null, false))
     }
 
-    fun handleInt(packet: ByteBuf) {
+    private fun handleInt(packet: ByteBuf) {
         val int = readInt(packet)
         onResponse(Response(int, null, null, null, false))
     }
 
-    fun handleError(packet: ByteBuf) {
+    private fun handleError(packet: ByteBuf) {
         val length = packet.bytesBefore('\r'.toByte())
         val errorText = packet.toString(packet.readerIndex(), length, Charsets.UTF_8)
         packet.skipBytes(length + 2)
         onError(RedisException(errorText))
     }
 
-    fun handleBulkString(packet: ByteBuf) {
+    private fun handleBulkString(packet: ByteBuf) {
         val length = readInt(packet).toInt()
 
         // A length of -1 indicates a null value.
@@ -180,7 +200,7 @@ class ProtocolHandler(
         onResponse(Response(0, null, buffer, null, false))
     }
 
-    fun handleArray(packet: ByteBuf) {
+    private fun handleArray(packet: ByteBuf) {
         val count = readInt(packet).toInt()
         if(count == -1) {
             // A length of -1 indicates a null value.
@@ -192,7 +212,7 @@ class ProtocolHandler(
         }
     }
 
-    fun readInt(packet: ByteBuf): Long {
+    private fun readInt(packet: ByteBuf): Long {
         var value = 0L
         var sign = 1
         val start = packet.readerIndex()
@@ -212,7 +232,7 @@ class ProtocolHandler(
         return value * sign
     }
 
-    fun bulkHash(string: ByteBuf): Int {
+    private fun bulkHash(string: ByteBuf): Int {
         val bytes = ByteArray(string.readableBytes())
         string.readBytes(bytes)
         return Arrays.hashCode(bytes)
