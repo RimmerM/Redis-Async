@@ -4,6 +4,7 @@ import com.google.gson.JsonElement
 import com.google.gson.JsonParser
 import java.io.*
 import java.net.URL
+import java.util.*
 
 enum class ReturnType {
     SimpleString, BulkString, Integer, Array, Any
@@ -14,7 +15,18 @@ enum class ArgType {
 }
 
 class CommandArg(val name: String, val type: ArgType, val optional: Boolean)
-class Command(val name: String, val additionalNames: List<String>, val summary: String, val complexity: String?, val returnType: ReturnType, val returnDesc: String, val args: List<CommandArg>)
+class CommandBlock(val name: String, val args: List<CommandArg>)
+
+class Command(
+    val name: String,
+    val additionalNames: List<String>,
+    val summary: String,
+    val complexity: String?,
+    val returnType: ReturnType,
+    val returnDesc: String,
+    val args: List<CommandArg>,
+    val blocks: List<CommandBlock>
+)
 
 class Builder(val writer: Writer) {
     var indent = 0
@@ -104,7 +116,10 @@ fun generateCommands(command: (Command) -> Unit) {
             c["complexity"].asString
         } else null
 
+        val blocks = ArrayList<CommandBlock>()
+
         val args = ps?.flatMap {
+            val a = ArrayList<CommandArg>()
             val p = it.asJsonObject
             val n = p["name"]
             val t = p["type"]
@@ -120,36 +135,43 @@ fun generateCommands(command: (Command) -> Unit) {
                 }
             }
 
-            val name = {
+            if(p.has("command")) {
+                val cmd = p["command"].asString
+                val args = if(p.has("name")) {
+                    if(t.isJsonArray) {
+                        val names = n.asJsonArray
+                        val types = t.asJsonArray
+                        names.zip(types).map {
+                            CommandArg(it.first.asString, getType(it.second), optional)
+                        }
+                    } else {
+                        listOf(CommandArg(n.asString, getType(t), optional))
+                    }
+                } else emptyList<CommandArg>()
+                blocks.add(CommandBlock(cmd, args))
+            } else if(p.has("name")) {
                 if(t.isJsonArray) {
                     val names = n.asJsonArray
                     val types = t.asJsonArray
-                    names.zip(types).map {
+                    a.addAll(names.zip(types).map {
                         CommandArg(it.first.asString, getType(it.second), optional)
-                    }
+                    })
                 } else {
-                    listOf(CommandArg(n.asString, getType(t), optional))
+                    a.add(CommandArg(n.asString, getType(t), optional))
                 }
             }
 
-            val first = if(p.has("command")) {
-                val cmd = p["command"].asString
-                listOf(CommandArg(cmd, ArgType.String, optional))
-            } else null
-
-            if(p.has("name")) {
-                if(first != null) first + name() else name()
-            } else first!!
+            a
         } ?: emptyList<CommandArg>()
 
         val names = it.key.toLowerCase().split(' ')
         val summary = c["summary"].asString
 
-        command(Command(names.first(), names.drop(1), summary, complexity, returnType, returnDesc.toString(), args))
+        command(Command(names.first(), names.drop(1), summary, complexity, returnType, returnDesc.toString(), args, blocks))
     }
 }
 
-fun generateCallbackCommand(builder: Builder) = { c: Command ->
+fun generateCallbackCommand(builder: Builder) = { c: Command, b: List<CommandBlock> ->
     builder.line("/**")
     builder.line(" * ${c.summary.trim()}")
     if(c.complexity != null) {
@@ -162,7 +184,7 @@ fun generateCallbackCommand(builder: Builder) = { c: Command ->
     }
     builder.line(" */")
     builder.startLine()
-    builder.append("inline fun Connection.${(listOf(c.name.toLowerCase()) + c.additionalNames).joinToString("_")}(")
+    builder.append("inline fun Connection.${(listOf(c.name.toLowerCase().let { if(it == "object") "`object`" else it }) + c.additionalNames.map {it.replace('-', '_')} + b.map {it.name.toLowerCase()}).joinToString("_")}(")
 
     c.args.forEach {
         val type = when(it.type) {
@@ -172,6 +194,18 @@ fun generateCallbackCommand(builder: Builder) = { c: Command ->
             else -> "Any"
         }
         builder.append("${it.name.filter {it.isJavaIdentifierPart()}}: $type, ")
+    }
+
+    b.forEach { block ->
+        block.args.forEach {
+            val type = when (it.type) {
+                ArgType.String -> "String"
+                ArgType.Key -> "String"
+                ArgType.Int -> "Long"
+                else -> "Any"
+            }
+            builder.append("${block.name.toLowerCase()}_${it.name.filter { it.isJavaIdentifierPart() }}: $type, ")
+        }
     }
 
     when(c.returnType) {
@@ -187,10 +221,10 @@ fun generateCallbackCommand(builder: Builder) = { c: Command ->
     builder.withLevel {
         builder.line("val target = ByteBufAllocator.DEFAULT.buffer(32)")
         builder.line("writeArray(target, ${c.args.size + c.additionalNames.size + 1})")
-        builder.line("writeBulkString(target, Command.${c.name.toUpperCase()}.bytes)")
+        builder.line("writeBulkString(target, kw_${c.name.toLowerCase()})")
 
         for(n in c.additionalNames) {
-            builder.line("writeBulkString(target, Keyword.${n.toUpperCase()}.bytes)")
+            builder.line("writeBulkString(target, kw_${n.toLowerCase().replace('-', '_')})")
         }
 
         for(a in c.args) {
@@ -199,6 +233,17 @@ fun generateCallbackCommand(builder: Builder) = { c: Command ->
                 else -> "${a.name.filter {it.isJavaIdentifierPart()}}.toString()"
             }
             builder.line("writeBulkString(target, $convert)")
+        }
+
+        for(block in b) {
+            builder.line("writeBulkString(target, kw_${block.name.toLowerCase()})")
+            for(a in block.args) {
+                val convert = when(a.type) {
+                    ArgType.String, ArgType.Key -> a.name.filter { it.isJavaIdentifierPart() }
+                    else -> "${a.name.filter { it.isJavaIdentifierPart() }}.toString()"
+                }
+                builder.line("writeBulkString(target, ${block.name.toLowerCase()}_$convert)")
+            }
         }
 
         when(c.returnType) {
@@ -213,6 +258,39 @@ fun generateCallbackCommand(builder: Builder) = { c: Command ->
     builder.newLine()
 }
 
+inline fun combinations(blocks: List<CommandBlock>, count: Int, f: (List<CommandBlock>) -> Unit) {
+    val size = blocks.size
+    var r = 0
+    var i = 0
+    val combinations = IntArray(count)
+
+    while(r >= 0) {
+        if(i <= (size + (r - count))) {
+            combinations[r] = i
+            if(r == count - 1) {
+                f(combinations.map {blocks[it]})
+                i++
+            } else {
+                i = combinations[r] + 1
+                r++
+            }
+        } else {
+            r--
+            if(r > 0) {
+                i = combinations[r] + 1
+            } else {
+                i = combinations[0] + 1
+            }
+        }
+    }
+}
+
+inline fun combinations(blocks: List<CommandBlock>, f: (List<CommandBlock>) -> Unit) {
+    for(i in 1..blocks.size) {
+        combinations(blocks, i, f)
+    }
+}
+
 fun generateCallbackCommands(target: Writer, targetPackage: String) {
     val builder = Builder(target)
     builder.line("package $targetPackage")
@@ -225,7 +303,27 @@ fun generateCallbackCommands(target: Writer, targetPackage: String) {
     builder.line("import io.netty.buffer.ByteBuf")
     builder.newLine()
 
-    generateCommands(generateCallbackCommand(builder))
+    val names = HashSet<String>()
+
+    generateCommands { c ->
+        names.add(c.name.toLowerCase())
+        names.addAll(c.additionalNames.map {it.toLowerCase()})
+        names.addAll(c.blocks.map {it.name.toLowerCase()})
+
+        generateCallbackCommand(builder)(c, emptyList())
+        if(c.blocks.isNotEmpty()) {
+            combinations(c.blocks) {
+                generateCallbackCommand(builder)(c, it)
+            }
+        }
+    }
+
+    builder.newLine()
+    for(name in names) {
+        val varName = name.replace('-', '_')
+        val keyName = name.toUpperCase()
+        builder.line("val kw_$varName = \"$keyName\".toByteArray(Charsets.UTF_8)")
+    }
 }
 
 fun main(args: Array<String>) {
