@@ -193,7 +193,7 @@ fun generateCallbackCommand(builder: Builder) = { c: Command, b: List<CommandBlo
             ArgType.Int -> "Long"
             else -> "Any"
         }
-        builder.append("${it.name.filter {it.isJavaIdentifierPart()}}: $type, ")
+        builder.append("${it.name.filter {it.isJavaIdentifierPart()}}: $type${if(it.optional) "? = null" else ""}, ")
     }
 
     b.forEach { block ->
@@ -219,8 +219,12 @@ fun generateCallbackCommand(builder: Builder) = { c: Command, b: List<CommandBlo
     builder.newLine()
 
     builder.withLevel {
+        val optionalArgs = c.args.filter {it.optional}
         builder.line("val target = ByteBufAllocator.DEFAULT.buffer(32)")
-        builder.line("writeArray(target, ${c.args.size + c.additionalNames.size + 1})")
+        if(optionalArgs.isNotEmpty()) {
+            builder.line("val nullCount = ${optionalArgs.map { "(if(${it.name.filter {it.isJavaIdentifierPart()}} == null) 1 else 0)" }.joinToString(" + ")}")
+        }
+        builder.line("writeArray(target, ${c.args.size + c.additionalNames.size + 1}${if(optionalArgs.isNotEmpty()) " - nullCount" else ""})")
         builder.line("writeBulkString(target, kw_${c.name.toLowerCase()})")
 
         for(n in c.additionalNames) {
@@ -232,7 +236,12 @@ fun generateCallbackCommand(builder: Builder) = { c: Command, b: List<CommandBlo
                 ArgType.String, ArgType.Key -> a.name.filter {it.isJavaIdentifierPart()}
                 else -> "${a.name.filter {it.isJavaIdentifierPart()}}.toString()"
             }
-            builder.line("writeBulkString(target, $convert)")
+
+            if(a.optional) {
+                builder.line("if(${a.name.filter {it.isJavaIdentifierPart()}} != null) writeBulkString(target, $convert)")
+            } else {
+                builder.line("writeBulkString(target, $convert)")
+            }
         }
 
         for(block in b) {
