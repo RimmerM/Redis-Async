@@ -9,7 +9,7 @@
     <version>1.0-SNAPSHOT</version>
 
     <build>
-        <sourceDirectory>src</sourceDirectory>
+        <sourceDirectory>${project.basedir}/src</sourceDirectory>
         <testSourceDirectory>tests</testSourceDirectory>
 
         <plugins>
@@ -26,7 +26,7 @@
                         </goals>
                         <configuration>
                             <sourceDirs>
-                                <source>src</source>
+                                <source>${project.basedir}/src</source>
                             </sourceDirs>
                         </configuration>
                     </execution>
