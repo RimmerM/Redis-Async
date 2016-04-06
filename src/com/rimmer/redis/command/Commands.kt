@@ -58,13 +58,14 @@ inline fun Connection.bgsave(crossinline f: (String?, Throwable?) -> Unit) {
  * Complexity: O(N)
  * @return The number of bits set to 1.
  */
-inline fun Connection.bitcount(key: String, start: Long, end: Long, crossinline f: (Long?, Throwable?) -> Unit) {
+inline fun Connection.bitcount(key: String, start: Long? = null, end: Long? = null, crossinline f: (Long?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 4)
+    val nullCount = (if(start == null) 1 else 0) + (if(end == null) 1 else 0)
+    writeArray(target, 4 - nullCount)
     writeBulkString(target, kw_bitcount)
     writeBulkString(target, key)
-    writeBulkString(target, start.toString())
-    writeBulkString(target, end.toString())
+    if(start != null) writeBulkString(target, start.toString())
+    if(end != null) writeBulkString(target, end.toString())
     command(target) {r, e -> f(if(r == null || r.isNull) null else r.int, e)}
 }
 
@@ -93,14 +94,15 @@ If we look for clear bits (the bit argument is 0) and the string only contains b
 Basically, the function considers the right of the string as padded with zeros if you look for clear bits and specify no range or the _start_ argument **only**.
 However, this behavior changes if you are looking for clear bits and specify a range with both __start__ and __end__. If no clear bit is found in the specified range, the function returns -1 as the user specified a clear range and there are no 0 bits in that range.
  */
-inline fun Connection.bitpos(key: String, bit: Long, start: Long, end: Long, crossinline f: (Long?, Throwable?) -> Unit) {
+inline fun Connection.bitpos(key: String, bit: Long, start: Long? = null, end: Long? = null, crossinline f: (Long?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 5)
+    val nullCount = (if(start == null) 1 else 0) + (if(end == null) 1 else 0)
+    writeArray(target, 5 - nullCount)
     writeBulkString(target, kw_bitpos)
     writeBulkString(target, key)
     writeBulkString(target, bit.toString())
-    writeBulkString(target, start.toString())
-    writeBulkString(target, end.toString())
+    if(start != null) writeBulkString(target, start.toString())
+    if(end != null) writeBulkString(target, end.toString())
     command(target) {r, e -> f(if(r == null || r.isNull) null else r.int, e)}
 }
 
@@ -167,12 +169,13 @@ inline fun Connection.brpoplpush(source: String, destination: String, timeout: L
 When called with the filter / value format:
 @integer-reply: the number of clients killed.
  */
-inline fun Connection.client_kill(ipport: String, crossinline f: (Response?, Throwable?) -> Unit) {
+inline fun Connection.client_kill(ipport: String? = null, crossinline f: (Response?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 3)
+    val nullCount = (if(ipport == null) 1 else 0)
+    writeArray(target, 3 - nullCount)
     writeBulkString(target, kw_client)
     writeBulkString(target, kw_kill)
-    writeBulkString(target, ipport)
+    if(ipport != null) writeBulkString(target, ipport)
     command(target) {r, e -> f(r, e)}
 }
 
@@ -183,12 +186,13 @@ inline fun Connection.client_kill(ipport: String, crossinline f: (Response?, Thr
 When called with the filter / value format:
 @integer-reply: the number of clients killed.
  */
-inline fun Connection.client_kill_id(ipport: String, id_clientid: Long, crossinline f: (Response?, Throwable?) -> Unit) {
+inline fun Connection.client_kill_id(ipport: String? = null, id_clientid: Long, crossinline f: (Response?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 3)
+    val nullCount = (if(ipport == null) 1 else 0)
+    writeArray(target, 3 - nullCount)
     writeBulkString(target, kw_client)
     writeBulkString(target, kw_kill)
-    writeBulkString(target, ipport)
+    if(ipport != null) writeBulkString(target, ipport)
     writeBulkString(target, kw_id)
     writeBulkString(target, id_clientid.toString())
     command(target) {r, e -> f(r, e)}
@@ -201,12 +205,13 @@ inline fun Connection.client_kill_id(ipport: String, id_clientid: Long, crossinl
 When called with the filter / value format:
 @integer-reply: the number of clients killed.
  */
-inline fun Connection.client_kill_type(ipport: String, crossinline f: (Response?, Throwable?) -> Unit) {
+inline fun Connection.client_kill_type(ipport: String? = null, crossinline f: (Response?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 3)
+    val nullCount = (if(ipport == null) 1 else 0)
+    writeArray(target, 3 - nullCount)
     writeBulkString(target, kw_client)
     writeBulkString(target, kw_kill)
-    writeBulkString(target, ipport)
+    if(ipport != null) writeBulkString(target, ipport)
     writeBulkString(target, kw_type)
     command(target) {r, e -> f(r, e)}
 }
@@ -218,12 +223,13 @@ inline fun Connection.client_kill_type(ipport: String, crossinline f: (Response?
 When called with the filter / value format:
 @integer-reply: the number of clients killed.
  */
-inline fun Connection.client_kill_addr(ipport: String, addr_ipport: String, crossinline f: (Response?, Throwable?) -> Unit) {
+inline fun Connection.client_kill_addr(ipport: String? = null, addr_ipport: String, crossinline f: (Response?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 3)
+    val nullCount = (if(ipport == null) 1 else 0)
+    writeArray(target, 3 - nullCount)
     writeBulkString(target, kw_client)
     writeBulkString(target, kw_kill)
-    writeBulkString(target, ipport)
+    if(ipport != null) writeBulkString(target, ipport)
     writeBulkString(target, kw_addr)
     writeBulkString(target, addr_ipport)
     command(target) {r, e -> f(r, e)}
@@ -236,12 +242,13 @@ inline fun Connection.client_kill_addr(ipport: String, addr_ipport: String, cros
 When called with the filter / value format:
 @integer-reply: the number of clients killed.
  */
-inline fun Connection.client_kill_skipme(ipport: String, skipme_yesno: String, crossinline f: (Response?, Throwable?) -> Unit) {
+inline fun Connection.client_kill_skipme(ipport: String? = null, skipme_yesno: String, crossinline f: (Response?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 3)
+    val nullCount = (if(ipport == null) 1 else 0)
+    writeArray(target, 3 - nullCount)
     writeBulkString(target, kw_client)
     writeBulkString(target, kw_kill)
-    writeBulkString(target, ipport)
+    if(ipport != null) writeBulkString(target, ipport)
     writeBulkString(target, kw_skipme)
     writeBulkString(target, skipme_yesno)
     command(target) {r, e -> f(r, e)}
@@ -254,12 +261,13 @@ inline fun Connection.client_kill_skipme(ipport: String, skipme_yesno: String, c
 When called with the filter / value format:
 @integer-reply: the number of clients killed.
  */
-inline fun Connection.client_kill_id_type(ipport: String, id_clientid: Long, crossinline f: (Response?, Throwable?) -> Unit) {
+inline fun Connection.client_kill_id_type(ipport: String? = null, id_clientid: Long, crossinline f: (Response?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 3)
+    val nullCount = (if(ipport == null) 1 else 0)
+    writeArray(target, 3 - nullCount)
     writeBulkString(target, kw_client)
     writeBulkString(target, kw_kill)
-    writeBulkString(target, ipport)
+    if(ipport != null) writeBulkString(target, ipport)
     writeBulkString(target, kw_id)
     writeBulkString(target, id_clientid.toString())
     writeBulkString(target, kw_type)
@@ -273,12 +281,13 @@ inline fun Connection.client_kill_id_type(ipport: String, id_clientid: Long, cro
 When called with the filter / value format:
 @integer-reply: the number of clients killed.
  */
-inline fun Connection.client_kill_id_addr(ipport: String, id_clientid: Long, addr_ipport: String, crossinline f: (Response?, Throwable?) -> Unit) {
+inline fun Connection.client_kill_id_addr(ipport: String? = null, id_clientid: Long, addr_ipport: String, crossinline f: (Response?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 3)
+    val nullCount = (if(ipport == null) 1 else 0)
+    writeArray(target, 3 - nullCount)
     writeBulkString(target, kw_client)
     writeBulkString(target, kw_kill)
-    writeBulkString(target, ipport)
+    if(ipport != null) writeBulkString(target, ipport)
     writeBulkString(target, kw_id)
     writeBulkString(target, id_clientid.toString())
     writeBulkString(target, kw_addr)
@@ -293,12 +302,13 @@ inline fun Connection.client_kill_id_addr(ipport: String, id_clientid: Long, add
 When called with the filter / value format:
 @integer-reply: the number of clients killed.
  */
-inline fun Connection.client_kill_id_skipme(ipport: String, id_clientid: Long, skipme_yesno: String, crossinline f: (Response?, Throwable?) -> Unit) {
+inline fun Connection.client_kill_id_skipme(ipport: String? = null, id_clientid: Long, skipme_yesno: String, crossinline f: (Response?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 3)
+    val nullCount = (if(ipport == null) 1 else 0)
+    writeArray(target, 3 - nullCount)
     writeBulkString(target, kw_client)
     writeBulkString(target, kw_kill)
-    writeBulkString(target, ipport)
+    if(ipport != null) writeBulkString(target, ipport)
     writeBulkString(target, kw_id)
     writeBulkString(target, id_clientid.toString())
     writeBulkString(target, kw_skipme)
@@ -313,72 +323,13 @@ inline fun Connection.client_kill_id_skipme(ipport: String, id_clientid: Long, s
 When called with the filter / value format:
 @integer-reply: the number of clients killed.
  */
-inline fun Connection.client_kill_type_addr(ipport: String, addr_ipport: String, crossinline f: (Response?, Throwable?) -> Unit) {
+inline fun Connection.client_kill_type_addr(ipport: String? = null, addr_ipport: String, crossinline f: (Response?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 3)
+    val nullCount = (if(ipport == null) 1 else 0)
+    writeArray(target, 3 - nullCount)
     writeBulkString(target, kw_client)
     writeBulkString(target, kw_kill)
-    writeBulkString(target, ipport)
-    writeBulkString(target, kw_type)
-    writeBulkString(target, kw_addr)
-    writeBulkString(target, addr_ipport)
-    command(target) {r, e -> f(r, e)}
-}
-
-/**
- * Kill the connection of a client
- * Complexity: O(N) where N is the number of client connections
- * @return @simple-string-reply: `OK` if the connection exists and has been closed
-When called with the filter / value format:
-@integer-reply: the number of clients killed.
- */
-inline fun Connection.client_kill_type_skipme(ipport: String, skipme_yesno: String, crossinline f: (Response?, Throwable?) -> Unit) {
-    val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 3)
-    writeBulkString(target, kw_client)
-    writeBulkString(target, kw_kill)
-    writeBulkString(target, ipport)
-    writeBulkString(target, kw_type)
-    writeBulkString(target, kw_skipme)
-    writeBulkString(target, skipme_yesno)
-    command(target) {r, e -> f(r, e)}
-}
-
-/**
- * Kill the connection of a client
- * Complexity: O(N) where N is the number of client connections
- * @return @simple-string-reply: `OK` if the connection exists and has been closed
-When called with the filter / value format:
-@integer-reply: the number of clients killed.
- */
-inline fun Connection.client_kill_addr_skipme(ipport: String, addr_ipport: String, skipme_yesno: String, crossinline f: (Response?, Throwable?) -> Unit) {
-    val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 3)
-    writeBulkString(target, kw_client)
-    writeBulkString(target, kw_kill)
-    writeBulkString(target, ipport)
-    writeBulkString(target, kw_addr)
-    writeBulkString(target, addr_ipport)
-    writeBulkString(target, kw_skipme)
-    writeBulkString(target, skipme_yesno)
-    command(target) {r, e -> f(r, e)}
-}
-
-/**
- * Kill the connection of a client
- * Complexity: O(N) where N is the number of client connections
- * @return @simple-string-reply: `OK` if the connection exists and has been closed
-When called with the filter / value format:
-@integer-reply: the number of clients killed.
- */
-inline fun Connection.client_kill_id_type_addr(ipport: String, id_clientid: Long, addr_ipport: String, crossinline f: (Response?, Throwable?) -> Unit) {
-    val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 3)
-    writeBulkString(target, kw_client)
-    writeBulkString(target, kw_kill)
-    writeBulkString(target, ipport)
-    writeBulkString(target, kw_id)
-    writeBulkString(target, id_clientid.toString())
+    if(ipport != null) writeBulkString(target, ipport)
     writeBulkString(target, kw_type)
     writeBulkString(target, kw_addr)
     writeBulkString(target, addr_ipport)
@@ -392,14 +343,13 @@ inline fun Connection.client_kill_id_type_addr(ipport: String, id_clientid: Long
 When called with the filter / value format:
 @integer-reply: the number of clients killed.
  */
-inline fun Connection.client_kill_id_type_skipme(ipport: String, id_clientid: Long, skipme_yesno: String, crossinline f: (Response?, Throwable?) -> Unit) {
+inline fun Connection.client_kill_type_skipme(ipport: String? = null, skipme_yesno: String, crossinline f: (Response?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 3)
+    val nullCount = (if(ipport == null) 1 else 0)
+    writeArray(target, 3 - nullCount)
     writeBulkString(target, kw_client)
     writeBulkString(target, kw_kill)
-    writeBulkString(target, ipport)
-    writeBulkString(target, kw_id)
-    writeBulkString(target, id_clientid.toString())
+    if(ipport != null) writeBulkString(target, ipport)
     writeBulkString(target, kw_type)
     writeBulkString(target, kw_skipme)
     writeBulkString(target, skipme_yesno)
@@ -413,14 +363,13 @@ inline fun Connection.client_kill_id_type_skipme(ipport: String, id_clientid: Lo
 When called with the filter / value format:
 @integer-reply: the number of clients killed.
  */
-inline fun Connection.client_kill_id_addr_skipme(ipport: String, id_clientid: Long, addr_ipport: String, skipme_yesno: String, crossinline f: (Response?, Throwable?) -> Unit) {
+inline fun Connection.client_kill_addr_skipme(ipport: String? = null, addr_ipport: String, skipme_yesno: String, crossinline f: (Response?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 3)
+    val nullCount = (if(ipport == null) 1 else 0)
+    writeArray(target, 3 - nullCount)
     writeBulkString(target, kw_client)
     writeBulkString(target, kw_kill)
-    writeBulkString(target, ipport)
-    writeBulkString(target, kw_id)
-    writeBulkString(target, id_clientid.toString())
+    if(ipport != null) writeBulkString(target, ipport)
     writeBulkString(target, kw_addr)
     writeBulkString(target, addr_ipport)
     writeBulkString(target, kw_skipme)
@@ -435,12 +384,80 @@ inline fun Connection.client_kill_id_addr_skipme(ipport: String, id_clientid: Lo
 When called with the filter / value format:
 @integer-reply: the number of clients killed.
  */
-inline fun Connection.client_kill_type_addr_skipme(ipport: String, addr_ipport: String, skipme_yesno: String, crossinline f: (Response?, Throwable?) -> Unit) {
+inline fun Connection.client_kill_id_type_addr(ipport: String? = null, id_clientid: Long, addr_ipport: String, crossinline f: (Response?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 3)
+    val nullCount = (if(ipport == null) 1 else 0)
+    writeArray(target, 3 - nullCount)
     writeBulkString(target, kw_client)
     writeBulkString(target, kw_kill)
-    writeBulkString(target, ipport)
+    if(ipport != null) writeBulkString(target, ipport)
+    writeBulkString(target, kw_id)
+    writeBulkString(target, id_clientid.toString())
+    writeBulkString(target, kw_type)
+    writeBulkString(target, kw_addr)
+    writeBulkString(target, addr_ipport)
+    command(target) {r, e -> f(r, e)}
+}
+
+/**
+ * Kill the connection of a client
+ * Complexity: O(N) where N is the number of client connections
+ * @return @simple-string-reply: `OK` if the connection exists and has been closed
+When called with the filter / value format:
+@integer-reply: the number of clients killed.
+ */
+inline fun Connection.client_kill_id_type_skipme(ipport: String? = null, id_clientid: Long, skipme_yesno: String, crossinline f: (Response?, Throwable?) -> Unit) {
+    val target = ByteBufAllocator.DEFAULT.buffer(32)
+    val nullCount = (if(ipport == null) 1 else 0)
+    writeArray(target, 3 - nullCount)
+    writeBulkString(target, kw_client)
+    writeBulkString(target, kw_kill)
+    if(ipport != null) writeBulkString(target, ipport)
+    writeBulkString(target, kw_id)
+    writeBulkString(target, id_clientid.toString())
+    writeBulkString(target, kw_type)
+    writeBulkString(target, kw_skipme)
+    writeBulkString(target, skipme_yesno)
+    command(target) {r, e -> f(r, e)}
+}
+
+/**
+ * Kill the connection of a client
+ * Complexity: O(N) where N is the number of client connections
+ * @return @simple-string-reply: `OK` if the connection exists and has been closed
+When called with the filter / value format:
+@integer-reply: the number of clients killed.
+ */
+inline fun Connection.client_kill_id_addr_skipme(ipport: String? = null, id_clientid: Long, addr_ipport: String, skipme_yesno: String, crossinline f: (Response?, Throwable?) -> Unit) {
+    val target = ByteBufAllocator.DEFAULT.buffer(32)
+    val nullCount = (if(ipport == null) 1 else 0)
+    writeArray(target, 3 - nullCount)
+    writeBulkString(target, kw_client)
+    writeBulkString(target, kw_kill)
+    if(ipport != null) writeBulkString(target, ipport)
+    writeBulkString(target, kw_id)
+    writeBulkString(target, id_clientid.toString())
+    writeBulkString(target, kw_addr)
+    writeBulkString(target, addr_ipport)
+    writeBulkString(target, kw_skipme)
+    writeBulkString(target, skipme_yesno)
+    command(target) {r, e -> f(r, e)}
+}
+
+/**
+ * Kill the connection of a client
+ * Complexity: O(N) where N is the number of client connections
+ * @return @simple-string-reply: `OK` if the connection exists and has been closed
+When called with the filter / value format:
+@integer-reply: the number of clients killed.
+ */
+inline fun Connection.client_kill_type_addr_skipme(ipport: String? = null, addr_ipport: String, skipme_yesno: String, crossinline f: (Response?, Throwable?) -> Unit) {
+    val target = ByteBufAllocator.DEFAULT.buffer(32)
+    val nullCount = (if(ipport == null) 1 else 0)
+    writeArray(target, 3 - nullCount)
+    writeBulkString(target, kw_client)
+    writeBulkString(target, kw_kill)
+    if(ipport != null) writeBulkString(target, ipport)
     writeBulkString(target, kw_type)
     writeBulkString(target, kw_addr)
     writeBulkString(target, addr_ipport)
@@ -456,12 +473,13 @@ inline fun Connection.client_kill_type_addr_skipme(ipport: String, addr_ipport: 
 When called with the filter / value format:
 @integer-reply: the number of clients killed.
  */
-inline fun Connection.client_kill_id_type_addr_skipme(ipport: String, id_clientid: Long, addr_ipport: String, skipme_yesno: String, crossinline f: (Response?, Throwable?) -> Unit) {
+inline fun Connection.client_kill_id_type_addr_skipme(ipport: String? = null, id_clientid: Long, addr_ipport: String, skipme_yesno: String, crossinline f: (Response?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 3)
+    val nullCount = (if(ipport == null) 1 else 0)
+    writeArray(target, 3 - nullCount)
     writeBulkString(target, kw_client)
     writeBulkString(target, kw_kill)
-    writeBulkString(target, ipport)
+    if(ipport != null) writeBulkString(target, ipport)
     writeBulkString(target, kw_id)
     writeBulkString(target, id_clientid.toString())
     writeBulkString(target, kw_type)
@@ -649,12 +667,13 @@ inline fun Connection.cluster_delslots(slot: Long, crossinline f: (String?, Thro
  * Complexity: O(1)
  * @return `OK` if the command was accepted and a manual failover is going to be attempted. An error if the operation cannot be executed, for example if we are talking with a node which is already a master.
  */
-inline fun Connection.cluster_failover(options: String, crossinline f: (String?, Throwable?) -> Unit) {
+inline fun Connection.cluster_failover(options: String? = null, crossinline f: (String?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 3)
+    val nullCount = (if(options == null) 1 else 0)
+    writeArray(target, 3 - nullCount)
     writeBulkString(target, kw_cluster)
     writeBulkString(target, kw_failover)
-    writeBulkString(target, options)
+    if(options != null) writeBulkString(target, options)
     command(target) {r, e -> f(if(r == null || r.isNull) null else r.string, e)}
 }
 
@@ -761,12 +780,13 @@ inline fun Connection.cluster_replicate(nodeid: String, crossinline f: (String?,
  * Complexity: O(N) where N is the number of known nodes. The command may execute a FLUSHALL as a side effect.
  * @return `OK` if the command was successful. Otherwise an error is returned.
  */
-inline fun Connection.cluster_reset(resettype: String, crossinline f: (String?, Throwable?) -> Unit) {
+inline fun Connection.cluster_reset(resettype: String? = null, crossinline f: (String?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 3)
+    val nullCount = (if(resettype == null) 1 else 0)
+    writeArray(target, 3 - nullCount)
     writeBulkString(target, kw_cluster)
     writeBulkString(target, kw_reset)
-    writeBulkString(target, resettype)
+    if(resettype != null) writeBulkString(target, resettype)
     command(target) {r, e -> f(if(r == null || r.isNull) null else r.string, e)}
 }
 
@@ -811,14 +831,15 @@ Notes:
 * The order of step 1 and 2 is important. We want the destination node to be ready to accept `ASK` redirections when the source node is configured to redirect.
 * Step 4 does not technically need to use `SETSLOT` in the nodes not involved in the resharding, since the configuration will eventually propagate itself, however it is a good idea to do so in order to stop nodes from pointing to the wrong node for the hash slot moved as soon as possible, resulting in less redirections to find the right node.
  */
-inline fun Connection.cluster_setslot(slot: Long, subcommand: String, nodeid: String, crossinline f: (String?, Throwable?) -> Unit) {
+inline fun Connection.cluster_setslot(slot: Long, subcommand: String, nodeid: String? = null, crossinline f: (String?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 5)
+    val nullCount = (if(nodeid == null) 1 else 0)
+    writeArray(target, 5 - nullCount)
     writeBulkString(target, kw_cluster)
     writeBulkString(target, kw_setslot)
     writeBulkString(target, slot.toString())
     writeBulkString(target, subcommand)
-    writeBulkString(target, nodeid)
+    if(nodeid != null) writeBulkString(target, nodeid)
     command(target) {r, e -> f(if(r == null || r.isNull) null else r.string, e)}
 }
 
@@ -1289,14 +1310,15 @@ inline fun Connection.geopos(key: String, member: String, crossinline f: (Array<
 The command returns the distance as a double (represented as a string)
 in the specified unit, or NULL if one or both the elements are missing.
  */
-inline fun Connection.geodist(key: String, member1: String, member2: String, unit: String, crossinline f: (ByteBuf?, Throwable?) -> Unit) {
+inline fun Connection.geodist(key: String, member1: String, member2: String, unit: String? = null, crossinline f: (ByteBuf?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 5)
+    val nullCount = (if(unit == null) 1 else 0)
+    writeArray(target, 5 - nullCount)
     writeBulkString(target, kw_geodist)
     writeBulkString(target, key)
     writeBulkString(target, member1)
     writeBulkString(target, member2)
-    writeBulkString(target, unit)
+    if(unit != null) writeBulkString(target, unit)
     command(target) {r, e -> f(if(r == null || r.isNull) null else r.data, e)}
 }
 
@@ -1313,19 +1335,20 @@ When additional information is returned as an array of arrays for each item, the
 So for example the command `GEORADIUS Sicily 15 37 200 km WITHCOORD WITHDIST` will return each item in the following way:
     ["Palermo","190.4424",["13.361389338970184","38.115556395496299"]]
  */
-inline fun Connection.georadius(key: String, longitude: Any, latitude: Any, radius: Any, unit: String, withcoord: String, withdist: String, withhash: String, order: String, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
+inline fun Connection.georadius(key: String, longitude: Any, latitude: Any, radius: Any, unit: String, withcoord: String? = null, withdist: String? = null, withhash: String? = null, order: String? = null, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 10)
+    val nullCount = (if(withcoord == null) 1 else 0) + (if(withdist == null) 1 else 0) + (if(withhash == null) 1 else 0) + (if(order == null) 1 else 0)
+    writeArray(target, 10 - nullCount)
     writeBulkString(target, kw_georadius)
     writeBulkString(target, key)
     writeBulkString(target, longitude.toString())
     writeBulkString(target, latitude.toString())
     writeBulkString(target, radius.toString())
     writeBulkString(target, unit)
-    writeBulkString(target, withcoord)
-    writeBulkString(target, withdist)
-    writeBulkString(target, withhash)
-    writeBulkString(target, order)
+    if(withcoord != null) writeBulkString(target, withcoord)
+    if(withdist != null) writeBulkString(target, withdist)
+    if(withhash != null) writeBulkString(target, withhash)
+    if(order != null) writeBulkString(target, order)
     command(target) {r, e -> f(if(r == null || r.isNull) null else r.array, e)}
 }
 
@@ -1342,19 +1365,20 @@ When additional information is returned as an array of arrays for each item, the
 So for example the command `GEORADIUS Sicily 15 37 200 km WITHCOORD WITHDIST` will return each item in the following way:
     ["Palermo","190.4424",["13.361389338970184","38.115556395496299"]]
  */
-inline fun Connection.georadius_count(key: String, longitude: Any, latitude: Any, radius: Any, unit: String, withcoord: String, withdist: String, withhash: String, order: String, count_count: Long, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
+inline fun Connection.georadius_count(key: String, longitude: Any, latitude: Any, radius: Any, unit: String, withcoord: String? = null, withdist: String? = null, withhash: String? = null, order: String? = null, count_count: Long, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 10)
+    val nullCount = (if(withcoord == null) 1 else 0) + (if(withdist == null) 1 else 0) + (if(withhash == null) 1 else 0) + (if(order == null) 1 else 0)
+    writeArray(target, 10 - nullCount)
     writeBulkString(target, kw_georadius)
     writeBulkString(target, key)
     writeBulkString(target, longitude.toString())
     writeBulkString(target, latitude.toString())
     writeBulkString(target, radius.toString())
     writeBulkString(target, unit)
-    writeBulkString(target, withcoord)
-    writeBulkString(target, withdist)
-    writeBulkString(target, withhash)
-    writeBulkString(target, order)
+    if(withcoord != null) writeBulkString(target, withcoord)
+    if(withdist != null) writeBulkString(target, withdist)
+    if(withhash != null) writeBulkString(target, withhash)
+    if(order != null) writeBulkString(target, order)
     writeBulkString(target, kw_count)
     writeBulkString(target, count_count.toString())
     command(target) {r, e -> f(if(r == null || r.isNull) null else r.array, e)}
@@ -1364,18 +1388,19 @@ inline fun Connection.georadius_count(key: String, longitude: Any, latitude: Any
  * Query a sorted set representing a geospatial index to fetch members matching a given maximum distance from a member
  * Complexity: O(N+log(M)) where N is the number of elements inside the bounding box of the circular area delimited by center and radius and M is the number of items inside the index.
  */
-inline fun Connection.georadiusbymember(key: String, member: String, radius: Any, unit: String, withcoord: String, withdist: String, withhash: String, order: String, crossinline f: (Response?, Throwable?) -> Unit) {
+inline fun Connection.georadiusbymember(key: String, member: String, radius: Any, unit: String, withcoord: String? = null, withdist: String? = null, withhash: String? = null, order: String? = null, crossinline f: (Response?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 9)
+    val nullCount = (if(withcoord == null) 1 else 0) + (if(withdist == null) 1 else 0) + (if(withhash == null) 1 else 0) + (if(order == null) 1 else 0)
+    writeArray(target, 9 - nullCount)
     writeBulkString(target, kw_georadiusbymember)
     writeBulkString(target, key)
     writeBulkString(target, member)
     writeBulkString(target, radius.toString())
     writeBulkString(target, unit)
-    writeBulkString(target, withcoord)
-    writeBulkString(target, withdist)
-    writeBulkString(target, withhash)
-    writeBulkString(target, order)
+    if(withcoord != null) writeBulkString(target, withcoord)
+    if(withdist != null) writeBulkString(target, withdist)
+    if(withhash != null) writeBulkString(target, withhash)
+    if(order != null) writeBulkString(target, order)
     command(target) {r, e -> f(r, e)}
 }
 
@@ -1383,18 +1408,19 @@ inline fun Connection.georadiusbymember(key: String, member: String, radius: Any
  * Query a sorted set representing a geospatial index to fetch members matching a given maximum distance from a member
  * Complexity: O(N+log(M)) where N is the number of elements inside the bounding box of the circular area delimited by center and radius and M is the number of items inside the index.
  */
-inline fun Connection.georadiusbymember_count(key: String, member: String, radius: Any, unit: String, withcoord: String, withdist: String, withhash: String, order: String, count_count: Long, crossinline f: (Response?, Throwable?) -> Unit) {
+inline fun Connection.georadiusbymember_count(key: String, member: String, radius: Any, unit: String, withcoord: String? = null, withdist: String? = null, withhash: String? = null, order: String? = null, count_count: Long, crossinline f: (Response?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 9)
+    val nullCount = (if(withcoord == null) 1 else 0) + (if(withdist == null) 1 else 0) + (if(withhash == null) 1 else 0) + (if(order == null) 1 else 0)
+    writeArray(target, 9 - nullCount)
     writeBulkString(target, kw_georadiusbymember)
     writeBulkString(target, key)
     writeBulkString(target, member)
     writeBulkString(target, radius.toString())
     writeBulkString(target, unit)
-    writeBulkString(target, withcoord)
-    writeBulkString(target, withdist)
-    writeBulkString(target, withhash)
-    writeBulkString(target, order)
+    if(withcoord != null) writeBulkString(target, withcoord)
+    if(withdist != null) writeBulkString(target, withdist)
+    if(withhash != null) writeBulkString(target, withhash)
+    if(order != null) writeBulkString(target, order)
     writeBulkString(target, kw_count)
     writeBulkString(target, count_count.toString())
     command(target) {r, e -> f(r, e)}
@@ -1855,11 +1881,12 @@ For each database, the following line is added:
 *   `dbXXX`: `keys=XXX,expires=XXX`
 [hcgcpgp]: http://code.google.com/p/google-perftools/
  */
-inline fun Connection.info(section: String, crossinline f: (ByteBuf?, Throwable?) -> Unit) {
+inline fun Connection.info(section: String? = null, crossinline f: (ByteBuf?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 2)
+    val nullCount = (if(section == null) 1 else 0)
+    writeArray(target, 2 - nullCount)
     writeBulkString(target, kw_info)
-    writeBulkString(target, section)
+    if(section != null) writeBulkString(target, section)
     command(target) {r, e -> f(if(r == null || r.isNull) null else r.data, e)}
 }
 
@@ -2053,17 +2080,18 @@ inline fun Connection.mget(key: String, crossinline f: (Array<Response>?, Throwa
  * @return The command returns OK on success, or `NOKEY` if no keys were
 found in the source instance.
  */
-inline fun Connection.migrate(host: String, port: String, key: String, destinationdb: Long, timeout: Long, copy: String, replace: String, crossinline f: (String?, Throwable?) -> Unit) {
+inline fun Connection.migrate(host: String, port: String, key: String, destinationdb: Long, timeout: Long, copy: String? = null, replace: String? = null, crossinline f: (String?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 8)
+    val nullCount = (if(copy == null) 1 else 0) + (if(replace == null) 1 else 0)
+    writeArray(target, 8 - nullCount)
     writeBulkString(target, kw_migrate)
     writeBulkString(target, host)
     writeBulkString(target, port)
     writeBulkString(target, key)
     writeBulkString(target, destinationdb.toString())
     writeBulkString(target, timeout.toString())
-    writeBulkString(target, copy)
-    writeBulkString(target, replace)
+    if(copy != null) writeBulkString(target, copy)
+    if(replace != null) writeBulkString(target, replace)
     command(target) {r, e -> f(if(r == null || r.isNull) null else r.string, e)}
 }
 
@@ -2073,17 +2101,18 @@ inline fun Connection.migrate(host: String, port: String, key: String, destinati
  * @return The command returns OK on success, or `NOKEY` if no keys were
 found in the source instance.
  */
-inline fun Connection.migrate_keys(host: String, port: String, key: String, destinationdb: Long, timeout: Long, copy: String, replace: String, keys_key: String, crossinline f: (String?, Throwable?) -> Unit) {
+inline fun Connection.migrate_keys(host: String, port: String, key: String, destinationdb: Long, timeout: Long, copy: String? = null, replace: String? = null, keys_key: String, crossinline f: (String?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 8)
+    val nullCount = (if(copy == null) 1 else 0) + (if(replace == null) 1 else 0)
+    writeArray(target, 8 - nullCount)
     writeBulkString(target, kw_migrate)
     writeBulkString(target, host)
     writeBulkString(target, port)
     writeBulkString(target, key)
     writeBulkString(target, destinationdb.toString())
     writeBulkString(target, timeout.toString())
-    writeBulkString(target, copy)
-    writeBulkString(target, replace)
+    if(copy != null) writeBulkString(target, copy)
+    if(replace != null) writeBulkString(target, replace)
     writeBulkString(target, kw_keys)
     writeBulkString(target, keys_key)
     command(target) {r, e -> f(if(r == null || r.isNull) null else r.string, e)}
@@ -2164,12 +2193,13 @@ inline fun Connection.multi(crossinline f: (String?, Throwable?) -> Unit) {
 * Subcommand `encoding` returns a bulk reply.
 If the object you try to inspect is missing, a null bulk reply is returned.
  */
-inline fun Connection.`object`(subcommand: String, arguments: String, crossinline f: (Response?, Throwable?) -> Unit) {
+inline fun Connection.`object`(subcommand: String, arguments: String? = null, crossinline f: (Response?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 3)
+    val nullCount = (if(arguments == null) 1 else 0)
+    writeArray(target, 3 - nullCount)
     writeBulkString(target, kw_object)
     writeBulkString(target, subcommand)
-    writeBulkString(target, arguments)
+    if(arguments != null) writeBulkString(target, arguments)
     command(target) {r, e -> f(r, e)}
 }
 
@@ -2319,12 +2349,13 @@ to patterns but the total number of patterns all the clients are subscribed to.
 @return
 @integer-reply: the number of patterns all the clients are subscribed to.
  */
-inline fun Connection.pubsub(subcommand: String, argument: String, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
+inline fun Connection.pubsub(subcommand: String, argument: String? = null, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 3)
+    val nullCount = (if(argument == null) 1 else 0)
+    writeArray(target, 3 - nullCount)
     writeBulkString(target, kw_pubsub)
     writeBulkString(target, subcommand)
-    writeBulkString(target, argument)
+    if(argument != null) writeBulkString(target, argument)
     command(target) {r, e -> f(if(r == null || r.isNull) null else r.array, e)}
 }
 
@@ -2359,11 +2390,12 @@ inline fun Connection.publish(channel: String, message: String, crossinline f: (
  * Stop listening for messages posted to channels matching the given patterns
  * Complexity: O(N+M) where N is the number of patterns the client is already subscribed and M is the number of total patterns subscribed in the system (by any client).
  */
-inline fun Connection.punsubscribe(pattern: Any, crossinline f: (Response?, Throwable?) -> Unit) {
+inline fun Connection.punsubscribe(pattern: Any? = null, crossinline f: (Response?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 2)
+    val nullCount = (if(pattern == null) 1 else 0)
+    writeArray(target, 2 - nullCount)
     writeBulkString(target, kw_punsubscribe)
-    writeBulkString(target, pattern.toString())
+    if(pattern != null) writeBulkString(target, pattern.toString())
     command(target) {r, e -> f(r, e)}
 }
 
@@ -2446,14 +2478,15 @@ inline fun Connection.renamenx(key: String, newkey: String, crossinline f: (Long
  * Complexity: O(1) to create the new key and additional O(N*M) to reconstruct the serialized value, where N is the number of Redis objects composing the value and M their average size. For small string values the time complexity is thus O(1)+O(1*M) where M is small, so simply O(1). However for sorted set values the complexity is O(N*M*log(N)) because inserting values into sorted sets is O(log(N)).
  * @return The command returns OK on success.
  */
-inline fun Connection.restore(key: String, ttl: Long, serializedvalue: String, replace: String, crossinline f: (String?, Throwable?) -> Unit) {
+inline fun Connection.restore(key: String, ttl: Long, serializedvalue: String, replace: String? = null, crossinline f: (String?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 5)
+    val nullCount = (if(replace == null) 1 else 0)
+    writeArray(target, 5 - nullCount)
     writeBulkString(target, kw_restore)
     writeBulkString(target, key)
     writeBulkString(target, ttl.toString())
     writeBulkString(target, serializedvalue)
-    writeBulkString(target, replace)
+    if(replace != null) writeBulkString(target, replace)
     command(target) {r, e -> f(if(r == null || r.isNull) null else r.string, e)}
 }
 
@@ -2686,13 +2719,14 @@ inline fun Connection.select(index: Long, crossinline f: (String?, Throwable?) -
  * @return `OK` if `SET` was executed correctly.
 @nil-reply: a Null Bulk Reply is returned if the `SET` operation was not performed because the user specified the `NX` or `XX` option but the condition was not met.
  */
-inline fun Connection.set(key: String, value: String, condition: String, crossinline f: (String?, Throwable?) -> Unit) {
+inline fun Connection.set(key: String, value: String, condition: String? = null, crossinline f: (String?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 4)
+    val nullCount = (if(condition == null) 1 else 0)
+    writeArray(target, 4 - nullCount)
     writeBulkString(target, kw_set)
     writeBulkString(target, key)
     writeBulkString(target, value)
-    writeBulkString(target, condition)
+    if(condition != null) writeBulkString(target, condition)
     command(target) {r, e -> f(if(r == null || r.isNull) null else r.string, e)}
 }
 
@@ -2702,13 +2736,14 @@ inline fun Connection.set(key: String, value: String, condition: String, crossin
  * @return `OK` if `SET` was executed correctly.
 @nil-reply: a Null Bulk Reply is returned if the `SET` operation was not performed because the user specified the `NX` or `XX` option but the condition was not met.
  */
-inline fun Connection.set_ex(key: String, value: String, condition: String, ex_seconds: Long, crossinline f: (String?, Throwable?) -> Unit) {
+inline fun Connection.set_ex(key: String, value: String, condition: String? = null, ex_seconds: Long, crossinline f: (String?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 4)
+    val nullCount = (if(condition == null) 1 else 0)
+    writeArray(target, 4 - nullCount)
     writeBulkString(target, kw_set)
     writeBulkString(target, key)
     writeBulkString(target, value)
-    writeBulkString(target, condition)
+    if(condition != null) writeBulkString(target, condition)
     writeBulkString(target, kw_ex)
     writeBulkString(target, ex_seconds.toString())
     command(target) {r, e -> f(if(r == null || r.isNull) null else r.string, e)}
@@ -2720,13 +2755,14 @@ inline fun Connection.set_ex(key: String, value: String, condition: String, ex_s
  * @return `OK` if `SET` was executed correctly.
 @nil-reply: a Null Bulk Reply is returned if the `SET` operation was not performed because the user specified the `NX` or `XX` option but the condition was not met.
  */
-inline fun Connection.set_px(key: String, value: String, condition: String, px_milliseconds: Long, crossinline f: (String?, Throwable?) -> Unit) {
+inline fun Connection.set_px(key: String, value: String, condition: String? = null, px_milliseconds: Long, crossinline f: (String?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 4)
+    val nullCount = (if(condition == null) 1 else 0)
+    writeArray(target, 4 - nullCount)
     writeBulkString(target, kw_set)
     writeBulkString(target, key)
     writeBulkString(target, value)
-    writeBulkString(target, condition)
+    if(condition != null) writeBulkString(target, condition)
     writeBulkString(target, kw_px)
     writeBulkString(target, px_milliseconds.toString())
     command(target) {r, e -> f(if(r == null || r.isNull) null else r.string, e)}
@@ -2738,13 +2774,14 @@ inline fun Connection.set_px(key: String, value: String, condition: String, px_m
  * @return `OK` if `SET` was executed correctly.
 @nil-reply: a Null Bulk Reply is returned if the `SET` operation was not performed because the user specified the `NX` or `XX` option but the condition was not met.
  */
-inline fun Connection.set_ex_px(key: String, value: String, condition: String, ex_seconds: Long, px_milliseconds: Long, crossinline f: (String?, Throwable?) -> Unit) {
+inline fun Connection.set_ex_px(key: String, value: String, condition: String? = null, ex_seconds: Long, px_milliseconds: Long, crossinline f: (String?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 4)
+    val nullCount = (if(condition == null) 1 else 0)
+    writeArray(target, 4 - nullCount)
     writeBulkString(target, kw_set)
     writeBulkString(target, key)
     writeBulkString(target, value)
-    writeBulkString(target, condition)
+    if(condition != null) writeBulkString(target, condition)
     writeBulkString(target, kw_ex)
     writeBulkString(target, ex_seconds.toString())
     writeBulkString(target, kw_px)
@@ -2818,11 +2855,12 @@ inline fun Connection.setrange(key: String, offset: Long, value: String, crossin
 On success nothing is returned since the server quits and the connection is
 closed.
  */
-inline fun Connection.shutdown(savemode: String, crossinline f: (String?, Throwable?) -> Unit) {
+inline fun Connection.shutdown(savemode: String? = null, crossinline f: (String?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 2)
+    val nullCount = (if(savemode == null) 1 else 0)
+    writeArray(target, 2 - nullCount)
     writeBulkString(target, kw_shutdown)
-    writeBulkString(target, savemode)
+    if(savemode != null) writeBulkString(target, savemode)
     command(target) {r, e -> f(if(r == null || r.isNull) null else r.string, e)}
 }
 
@@ -2884,12 +2922,13 @@ inline fun Connection.slaveof(host: String, port: String, crossinline f: (String
 /**
  * Manages the Redis slow queries log
  */
-inline fun Connection.slowlog(subcommand: String, argument: String, crossinline f: (Response?, Throwable?) -> Unit) {
+inline fun Connection.slowlog(subcommand: String, argument: String? = null, crossinline f: (Response?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 3)
+    val nullCount = (if(argument == null) 1 else 0)
+    writeArray(target, 3 - nullCount)
     writeBulkString(target, kw_slowlog)
     writeBulkString(target, subcommand)
-    writeBulkString(target, argument)
+    if(argument != null) writeBulkString(target, argument)
     command(target) {r, e -> f(r, e)}
 }
 
@@ -2928,13 +2967,14 @@ inline fun Connection.smove(source: String, destination: String, member: String,
  * Complexity: O(N+M*log(M)) where N is the number of elements in the list or set to sort, and M the number of returned elements. When the elements are not sorted, complexity is currently O(N) as there is a copy step that will be avoided in next releases.
  * @return list of sorted elements.
  */
-inline fun Connection.sort(key: String, order: String, sorting: String, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
+inline fun Connection.sort(key: String, order: String? = null, sorting: String? = null, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 4)
+    val nullCount = (if(order == null) 1 else 0) + (if(sorting == null) 1 else 0)
+    writeArray(target, 4 - nullCount)
     writeBulkString(target, kw_sort)
     writeBulkString(target, key)
-    writeBulkString(target, order)
-    writeBulkString(target, sorting)
+    if(order != null) writeBulkString(target, order)
+    if(sorting != null) writeBulkString(target, sorting)
     command(target) {r, e -> f(if(r == null || r.isNull) null else r.array, e)}
 }
 
@@ -2943,13 +2983,14 @@ inline fun Connection.sort(key: String, order: String, sorting: String, crossinl
  * Complexity: O(N+M*log(M)) where N is the number of elements in the list or set to sort, and M the number of returned elements. When the elements are not sorted, complexity is currently O(N) as there is a copy step that will be avoided in next releases.
  * @return list of sorted elements.
  */
-inline fun Connection.sort_by(key: String, order: String, sorting: String, by_pattern: Any, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
+inline fun Connection.sort_by(key: String, order: String? = null, sorting: String? = null, by_pattern: Any, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 4)
+    val nullCount = (if(order == null) 1 else 0) + (if(sorting == null) 1 else 0)
+    writeArray(target, 4 - nullCount)
     writeBulkString(target, kw_sort)
     writeBulkString(target, key)
-    writeBulkString(target, order)
-    writeBulkString(target, sorting)
+    if(order != null) writeBulkString(target, order)
+    if(sorting != null) writeBulkString(target, sorting)
     writeBulkString(target, kw_by)
     writeBulkString(target, by_pattern.toString())
     command(target) {r, e -> f(if(r == null || r.isNull) null else r.array, e)}
@@ -2960,13 +3001,14 @@ inline fun Connection.sort_by(key: String, order: String, sorting: String, by_pa
  * Complexity: O(N+M*log(M)) where N is the number of elements in the list or set to sort, and M the number of returned elements. When the elements are not sorted, complexity is currently O(N) as there is a copy step that will be avoided in next releases.
  * @return list of sorted elements.
  */
-inline fun Connection.sort_limit(key: String, order: String, sorting: String, limit_offset: Long, limit_count: Long, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
+inline fun Connection.sort_limit(key: String, order: String? = null, sorting: String? = null, limit_offset: Long, limit_count: Long, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 4)
+    val nullCount = (if(order == null) 1 else 0) + (if(sorting == null) 1 else 0)
+    writeArray(target, 4 - nullCount)
     writeBulkString(target, kw_sort)
     writeBulkString(target, key)
-    writeBulkString(target, order)
-    writeBulkString(target, sorting)
+    if(order != null) writeBulkString(target, order)
+    if(sorting != null) writeBulkString(target, sorting)
     writeBulkString(target, kw_limit)
     writeBulkString(target, limit_offset.toString())
     writeBulkString(target, limit_count.toString())
@@ -2978,13 +3020,14 @@ inline fun Connection.sort_limit(key: String, order: String, sorting: String, li
  * Complexity: O(N+M*log(M)) where N is the number of elements in the list or set to sort, and M the number of returned elements. When the elements are not sorted, complexity is currently O(N) as there is a copy step that will be avoided in next releases.
  * @return list of sorted elements.
  */
-inline fun Connection.sort_get(key: String, order: String, sorting: String, get_pattern: String, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
+inline fun Connection.sort_get(key: String, order: String? = null, sorting: String? = null, get_pattern: String, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 4)
+    val nullCount = (if(order == null) 1 else 0) + (if(sorting == null) 1 else 0)
+    writeArray(target, 4 - nullCount)
     writeBulkString(target, kw_sort)
     writeBulkString(target, key)
-    writeBulkString(target, order)
-    writeBulkString(target, sorting)
+    if(order != null) writeBulkString(target, order)
+    if(sorting != null) writeBulkString(target, sorting)
     writeBulkString(target, kw_get)
     writeBulkString(target, get_pattern)
     command(target) {r, e -> f(if(r == null || r.isNull) null else r.array, e)}
@@ -2995,13 +3038,14 @@ inline fun Connection.sort_get(key: String, order: String, sorting: String, get_
  * Complexity: O(N+M*log(M)) where N is the number of elements in the list or set to sort, and M the number of returned elements. When the elements are not sorted, complexity is currently O(N) as there is a copy step that will be avoided in next releases.
  * @return list of sorted elements.
  */
-inline fun Connection.sort_store(key: String, order: String, sorting: String, store_destination: String, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
+inline fun Connection.sort_store(key: String, order: String? = null, sorting: String? = null, store_destination: String, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 4)
+    val nullCount = (if(order == null) 1 else 0) + (if(sorting == null) 1 else 0)
+    writeArray(target, 4 - nullCount)
     writeBulkString(target, kw_sort)
     writeBulkString(target, key)
-    writeBulkString(target, order)
-    writeBulkString(target, sorting)
+    if(order != null) writeBulkString(target, order)
+    if(sorting != null) writeBulkString(target, sorting)
     writeBulkString(target, kw_store)
     writeBulkString(target, store_destination)
     command(target) {r, e -> f(if(r == null || r.isNull) null else r.array, e)}
@@ -3012,13 +3056,14 @@ inline fun Connection.sort_store(key: String, order: String, sorting: String, st
  * Complexity: O(N+M*log(M)) where N is the number of elements in the list or set to sort, and M the number of returned elements. When the elements are not sorted, complexity is currently O(N) as there is a copy step that will be avoided in next releases.
  * @return list of sorted elements.
  */
-inline fun Connection.sort_by_limit(key: String, order: String, sorting: String, by_pattern: Any, limit_offset: Long, limit_count: Long, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
+inline fun Connection.sort_by_limit(key: String, order: String? = null, sorting: String? = null, by_pattern: Any, limit_offset: Long, limit_count: Long, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 4)
+    val nullCount = (if(order == null) 1 else 0) + (if(sorting == null) 1 else 0)
+    writeArray(target, 4 - nullCount)
     writeBulkString(target, kw_sort)
     writeBulkString(target, key)
-    writeBulkString(target, order)
-    writeBulkString(target, sorting)
+    if(order != null) writeBulkString(target, order)
+    if(sorting != null) writeBulkString(target, sorting)
     writeBulkString(target, kw_by)
     writeBulkString(target, by_pattern.toString())
     writeBulkString(target, kw_limit)
@@ -3032,13 +3077,14 @@ inline fun Connection.sort_by_limit(key: String, order: String, sorting: String,
  * Complexity: O(N+M*log(M)) where N is the number of elements in the list or set to sort, and M the number of returned elements. When the elements are not sorted, complexity is currently O(N) as there is a copy step that will be avoided in next releases.
  * @return list of sorted elements.
  */
-inline fun Connection.sort_by_get(key: String, order: String, sorting: String, by_pattern: Any, get_pattern: String, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
+inline fun Connection.sort_by_get(key: String, order: String? = null, sorting: String? = null, by_pattern: Any, get_pattern: String, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 4)
+    val nullCount = (if(order == null) 1 else 0) + (if(sorting == null) 1 else 0)
+    writeArray(target, 4 - nullCount)
     writeBulkString(target, kw_sort)
     writeBulkString(target, key)
-    writeBulkString(target, order)
-    writeBulkString(target, sorting)
+    if(order != null) writeBulkString(target, order)
+    if(sorting != null) writeBulkString(target, sorting)
     writeBulkString(target, kw_by)
     writeBulkString(target, by_pattern.toString())
     writeBulkString(target, kw_get)
@@ -3051,13 +3097,14 @@ inline fun Connection.sort_by_get(key: String, order: String, sorting: String, b
  * Complexity: O(N+M*log(M)) where N is the number of elements in the list or set to sort, and M the number of returned elements. When the elements are not sorted, complexity is currently O(N) as there is a copy step that will be avoided in next releases.
  * @return list of sorted elements.
  */
-inline fun Connection.sort_by_store(key: String, order: String, sorting: String, by_pattern: Any, store_destination: String, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
+inline fun Connection.sort_by_store(key: String, order: String? = null, sorting: String? = null, by_pattern: Any, store_destination: String, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 4)
+    val nullCount = (if(order == null) 1 else 0) + (if(sorting == null) 1 else 0)
+    writeArray(target, 4 - nullCount)
     writeBulkString(target, kw_sort)
     writeBulkString(target, key)
-    writeBulkString(target, order)
-    writeBulkString(target, sorting)
+    if(order != null) writeBulkString(target, order)
+    if(sorting != null) writeBulkString(target, sorting)
     writeBulkString(target, kw_by)
     writeBulkString(target, by_pattern.toString())
     writeBulkString(target, kw_store)
@@ -3070,74 +3117,14 @@ inline fun Connection.sort_by_store(key: String, order: String, sorting: String,
  * Complexity: O(N+M*log(M)) where N is the number of elements in the list or set to sort, and M the number of returned elements. When the elements are not sorted, complexity is currently O(N) as there is a copy step that will be avoided in next releases.
  * @return list of sorted elements.
  */
-inline fun Connection.sort_limit_get(key: String, order: String, sorting: String, limit_offset: Long, limit_count: Long, get_pattern: String, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
+inline fun Connection.sort_limit_get(key: String, order: String? = null, sorting: String? = null, limit_offset: Long, limit_count: Long, get_pattern: String, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 4)
+    val nullCount = (if(order == null) 1 else 0) + (if(sorting == null) 1 else 0)
+    writeArray(target, 4 - nullCount)
     writeBulkString(target, kw_sort)
     writeBulkString(target, key)
-    writeBulkString(target, order)
-    writeBulkString(target, sorting)
-    writeBulkString(target, kw_limit)
-    writeBulkString(target, limit_offset.toString())
-    writeBulkString(target, limit_count.toString())
-    writeBulkString(target, kw_get)
-    writeBulkString(target, get_pattern)
-    command(target) {r, e -> f(if(r == null || r.isNull) null else r.array, e)}
-}
-
-/**
- * Sort the elements in a list, set or sorted set
- * Complexity: O(N+M*log(M)) where N is the number of elements in the list or set to sort, and M the number of returned elements. When the elements are not sorted, complexity is currently O(N) as there is a copy step that will be avoided in next releases.
- * @return list of sorted elements.
- */
-inline fun Connection.sort_limit_store(key: String, order: String, sorting: String, limit_offset: Long, limit_count: Long, store_destination: String, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
-    val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 4)
-    writeBulkString(target, kw_sort)
-    writeBulkString(target, key)
-    writeBulkString(target, order)
-    writeBulkString(target, sorting)
-    writeBulkString(target, kw_limit)
-    writeBulkString(target, limit_offset.toString())
-    writeBulkString(target, limit_count.toString())
-    writeBulkString(target, kw_store)
-    writeBulkString(target, store_destination)
-    command(target) {r, e -> f(if(r == null || r.isNull) null else r.array, e)}
-}
-
-/**
- * Sort the elements in a list, set or sorted set
- * Complexity: O(N+M*log(M)) where N is the number of elements in the list or set to sort, and M the number of returned elements. When the elements are not sorted, complexity is currently O(N) as there is a copy step that will be avoided in next releases.
- * @return list of sorted elements.
- */
-inline fun Connection.sort_get_store(key: String, order: String, sorting: String, get_pattern: String, store_destination: String, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
-    val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 4)
-    writeBulkString(target, kw_sort)
-    writeBulkString(target, key)
-    writeBulkString(target, order)
-    writeBulkString(target, sorting)
-    writeBulkString(target, kw_get)
-    writeBulkString(target, get_pattern)
-    writeBulkString(target, kw_store)
-    writeBulkString(target, store_destination)
-    command(target) {r, e -> f(if(r == null || r.isNull) null else r.array, e)}
-}
-
-/**
- * Sort the elements in a list, set or sorted set
- * Complexity: O(N+M*log(M)) where N is the number of elements in the list or set to sort, and M the number of returned elements. When the elements are not sorted, complexity is currently O(N) as there is a copy step that will be avoided in next releases.
- * @return list of sorted elements.
- */
-inline fun Connection.sort_by_limit_get(key: String, order: String, sorting: String, by_pattern: Any, limit_offset: Long, limit_count: Long, get_pattern: String, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
-    val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 4)
-    writeBulkString(target, kw_sort)
-    writeBulkString(target, key)
-    writeBulkString(target, order)
-    writeBulkString(target, sorting)
-    writeBulkString(target, kw_by)
-    writeBulkString(target, by_pattern.toString())
+    if(order != null) writeBulkString(target, order)
+    if(sorting != null) writeBulkString(target, sorting)
     writeBulkString(target, kw_limit)
     writeBulkString(target, limit_offset.toString())
     writeBulkString(target, limit_count.toString())
@@ -3151,13 +3138,78 @@ inline fun Connection.sort_by_limit_get(key: String, order: String, sorting: Str
  * Complexity: O(N+M*log(M)) where N is the number of elements in the list or set to sort, and M the number of returned elements. When the elements are not sorted, complexity is currently O(N) as there is a copy step that will be avoided in next releases.
  * @return list of sorted elements.
  */
-inline fun Connection.sort_by_limit_store(key: String, order: String, sorting: String, by_pattern: Any, limit_offset: Long, limit_count: Long, store_destination: String, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
+inline fun Connection.sort_limit_store(key: String, order: String? = null, sorting: String? = null, limit_offset: Long, limit_count: Long, store_destination: String, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 4)
+    val nullCount = (if(order == null) 1 else 0) + (if(sorting == null) 1 else 0)
+    writeArray(target, 4 - nullCount)
     writeBulkString(target, kw_sort)
     writeBulkString(target, key)
-    writeBulkString(target, order)
-    writeBulkString(target, sorting)
+    if(order != null) writeBulkString(target, order)
+    if(sorting != null) writeBulkString(target, sorting)
+    writeBulkString(target, kw_limit)
+    writeBulkString(target, limit_offset.toString())
+    writeBulkString(target, limit_count.toString())
+    writeBulkString(target, kw_store)
+    writeBulkString(target, store_destination)
+    command(target) {r, e -> f(if(r == null || r.isNull) null else r.array, e)}
+}
+
+/**
+ * Sort the elements in a list, set or sorted set
+ * Complexity: O(N+M*log(M)) where N is the number of elements in the list or set to sort, and M the number of returned elements. When the elements are not sorted, complexity is currently O(N) as there is a copy step that will be avoided in next releases.
+ * @return list of sorted elements.
+ */
+inline fun Connection.sort_get_store(key: String, order: String? = null, sorting: String? = null, get_pattern: String, store_destination: String, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
+    val target = ByteBufAllocator.DEFAULT.buffer(32)
+    val nullCount = (if(order == null) 1 else 0) + (if(sorting == null) 1 else 0)
+    writeArray(target, 4 - nullCount)
+    writeBulkString(target, kw_sort)
+    writeBulkString(target, key)
+    if(order != null) writeBulkString(target, order)
+    if(sorting != null) writeBulkString(target, sorting)
+    writeBulkString(target, kw_get)
+    writeBulkString(target, get_pattern)
+    writeBulkString(target, kw_store)
+    writeBulkString(target, store_destination)
+    command(target) {r, e -> f(if(r == null || r.isNull) null else r.array, e)}
+}
+
+/**
+ * Sort the elements in a list, set or sorted set
+ * Complexity: O(N+M*log(M)) where N is the number of elements in the list or set to sort, and M the number of returned elements. When the elements are not sorted, complexity is currently O(N) as there is a copy step that will be avoided in next releases.
+ * @return list of sorted elements.
+ */
+inline fun Connection.sort_by_limit_get(key: String, order: String? = null, sorting: String? = null, by_pattern: Any, limit_offset: Long, limit_count: Long, get_pattern: String, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
+    val target = ByteBufAllocator.DEFAULT.buffer(32)
+    val nullCount = (if(order == null) 1 else 0) + (if(sorting == null) 1 else 0)
+    writeArray(target, 4 - nullCount)
+    writeBulkString(target, kw_sort)
+    writeBulkString(target, key)
+    if(order != null) writeBulkString(target, order)
+    if(sorting != null) writeBulkString(target, sorting)
+    writeBulkString(target, kw_by)
+    writeBulkString(target, by_pattern.toString())
+    writeBulkString(target, kw_limit)
+    writeBulkString(target, limit_offset.toString())
+    writeBulkString(target, limit_count.toString())
+    writeBulkString(target, kw_get)
+    writeBulkString(target, get_pattern)
+    command(target) {r, e -> f(if(r == null || r.isNull) null else r.array, e)}
+}
+
+/**
+ * Sort the elements in a list, set or sorted set
+ * Complexity: O(N+M*log(M)) where N is the number of elements in the list or set to sort, and M the number of returned elements. When the elements are not sorted, complexity is currently O(N) as there is a copy step that will be avoided in next releases.
+ * @return list of sorted elements.
+ */
+inline fun Connection.sort_by_limit_store(key: String, order: String? = null, sorting: String? = null, by_pattern: Any, limit_offset: Long, limit_count: Long, store_destination: String, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
+    val target = ByteBufAllocator.DEFAULT.buffer(32)
+    val nullCount = (if(order == null) 1 else 0) + (if(sorting == null) 1 else 0)
+    writeArray(target, 4 - nullCount)
+    writeBulkString(target, kw_sort)
+    writeBulkString(target, key)
+    if(order != null) writeBulkString(target, order)
+    if(sorting != null) writeBulkString(target, sorting)
     writeBulkString(target, kw_by)
     writeBulkString(target, by_pattern.toString())
     writeBulkString(target, kw_limit)
@@ -3173,13 +3225,14 @@ inline fun Connection.sort_by_limit_store(key: String, order: String, sorting: S
  * Complexity: O(N+M*log(M)) where N is the number of elements in the list or set to sort, and M the number of returned elements. When the elements are not sorted, complexity is currently O(N) as there is a copy step that will be avoided in next releases.
  * @return list of sorted elements.
  */
-inline fun Connection.sort_by_get_store(key: String, order: String, sorting: String, by_pattern: Any, get_pattern: String, store_destination: String, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
+inline fun Connection.sort_by_get_store(key: String, order: String? = null, sorting: String? = null, by_pattern: Any, get_pattern: String, store_destination: String, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 4)
+    val nullCount = (if(order == null) 1 else 0) + (if(sorting == null) 1 else 0)
+    writeArray(target, 4 - nullCount)
     writeBulkString(target, kw_sort)
     writeBulkString(target, key)
-    writeBulkString(target, order)
-    writeBulkString(target, sorting)
+    if(order != null) writeBulkString(target, order)
+    if(sorting != null) writeBulkString(target, sorting)
     writeBulkString(target, kw_by)
     writeBulkString(target, by_pattern.toString())
     writeBulkString(target, kw_get)
@@ -3194,13 +3247,14 @@ inline fun Connection.sort_by_get_store(key: String, order: String, sorting: Str
  * Complexity: O(N+M*log(M)) where N is the number of elements in the list or set to sort, and M the number of returned elements. When the elements are not sorted, complexity is currently O(N) as there is a copy step that will be avoided in next releases.
  * @return list of sorted elements.
  */
-inline fun Connection.sort_limit_get_store(key: String, order: String, sorting: String, limit_offset: Long, limit_count: Long, get_pattern: String, store_destination: String, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
+inline fun Connection.sort_limit_get_store(key: String, order: String? = null, sorting: String? = null, limit_offset: Long, limit_count: Long, get_pattern: String, store_destination: String, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 4)
+    val nullCount = (if(order == null) 1 else 0) + (if(sorting == null) 1 else 0)
+    writeArray(target, 4 - nullCount)
     writeBulkString(target, kw_sort)
     writeBulkString(target, key)
-    writeBulkString(target, order)
-    writeBulkString(target, sorting)
+    if(order != null) writeBulkString(target, order)
+    if(sorting != null) writeBulkString(target, sorting)
     writeBulkString(target, kw_limit)
     writeBulkString(target, limit_offset.toString())
     writeBulkString(target, limit_count.toString())
@@ -3216,13 +3270,14 @@ inline fun Connection.sort_limit_get_store(key: String, order: String, sorting: 
  * Complexity: O(N+M*log(M)) where N is the number of elements in the list or set to sort, and M the number of returned elements. When the elements are not sorted, complexity is currently O(N) as there is a copy step that will be avoided in next releases.
  * @return list of sorted elements.
  */
-inline fun Connection.sort_by_limit_get_store(key: String, order: String, sorting: String, by_pattern: Any, limit_offset: Long, limit_count: Long, get_pattern: String, store_destination: String, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
+inline fun Connection.sort_by_limit_get_store(key: String, order: String? = null, sorting: String? = null, by_pattern: Any, limit_offset: Long, limit_count: Long, get_pattern: String, store_destination: String, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 4)
+    val nullCount = (if(order == null) 1 else 0) + (if(sorting == null) 1 else 0)
+    writeArray(target, 4 - nullCount)
     writeBulkString(target, kw_sort)
     writeBulkString(target, key)
-    writeBulkString(target, order)
-    writeBulkString(target, sorting)
+    if(order != null) writeBulkString(target, order)
+    if(sorting != null) writeBulkString(target, sorting)
     writeBulkString(target, kw_by)
     writeBulkString(target, by_pattern.toString())
     writeBulkString(target, kw_limit)
@@ -3240,12 +3295,13 @@ inline fun Connection.sort_by_limit_get_store(key: String, order: String, sortin
  * Complexity: O(1)
  * @return the removed element, or `nil` when `key` does not exist.
  */
-inline fun Connection.spop(key: String, count: Long, crossinline f: (ByteBuf?, Throwable?) -> Unit) {
+inline fun Connection.spop(key: String, count: Long? = null, crossinline f: (ByteBuf?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 3)
+    val nullCount = (if(count == null) 1 else 0)
+    writeArray(target, 3 - nullCount)
     writeBulkString(target, kw_spop)
     writeBulkString(target, key)
-    writeBulkString(target, count.toString())
+    if(count != null) writeBulkString(target, count.toString())
     command(target) {r, e -> f(if(r == null || r.isNull) null else r.data, e)}
 }
 
@@ -3255,12 +3311,13 @@ inline fun Connection.spop(key: String, count: Long, crossinline f: (ByteBuf?, T
  * @return without the additional `count` argument the command returns a Bulk Reply with the randomly selected element, or `nil` when `key` does not exist.
 @array-reply: when the additional `count` argument is passed the command returns an array of elements, or an empty array when `key` does not exist.
  */
-inline fun Connection.srandmember(key: String, count: Long, crossinline f: (ByteBuf?, Throwable?) -> Unit) {
+inline fun Connection.srandmember(key: String, count: Long? = null, crossinline f: (ByteBuf?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 3)
+    val nullCount = (if(count == null) 1 else 0)
+    writeArray(target, 3 - nullCount)
     writeBulkString(target, kw_srandmember)
     writeBulkString(target, key)
-    writeBulkString(target, count.toString())
+    if(count != null) writeBulkString(target, count.toString())
     command(target) {r, e -> f(if(r == null || r.isNull) null else r.data, e)}
 }
 
@@ -3390,11 +3447,12 @@ inline fun Connection.type(key: String, crossinline f: (String?, Throwable?) -> 
  * Stop listening for messages posted to the given channels
  * Complexity: O(N) where N is the number of clients already subscribed to a channel.
  */
-inline fun Connection.unsubscribe(channel: String, crossinline f: (Response?, Throwable?) -> Unit) {
+inline fun Connection.unsubscribe(channel: String? = null, crossinline f: (Response?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 2)
+    val nullCount = (if(channel == null) 1 else 0)
+    writeArray(target, 2 - nullCount)
     writeBulkString(target, kw_unsubscribe)
-    writeBulkString(target, channel)
+    if(channel != null) writeBulkString(target, channel)
     command(target) {r, e -> f(r, e)}
 }
 
@@ -3450,14 +3508,15 @@ If the `INCR` option is specified, the return value will be @bulk-string-reply:
   In Redis versions older than 2.4 it was possible to add or update a single
   member per call.
  */
-inline fun Connection.zadd(key: String, condition: String, change: String, increment: String, score: Any, member: String, crossinline f: (Long?, Throwable?) -> Unit) {
+inline fun Connection.zadd(key: String, condition: String? = null, change: String? = null, increment: String? = null, score: Any, member: String, crossinline f: (Long?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 7)
+    val nullCount = (if(condition == null) 1 else 0) + (if(change == null) 1 else 0) + (if(increment == null) 1 else 0)
+    writeArray(target, 7 - nullCount)
     writeBulkString(target, kw_zadd)
     writeBulkString(target, key)
-    writeBulkString(target, condition)
-    writeBulkString(target, change)
-    writeBulkString(target, increment)
+    if(condition != null) writeBulkString(target, condition)
+    if(change != null) writeBulkString(target, change)
+    if(increment != null) writeBulkString(target, increment)
     writeBulkString(target, score.toString())
     writeBulkString(target, member)
     command(target) {r, e -> f(if(r == null || r.isNull) null else r.int, e)}
@@ -3601,14 +3660,15 @@ inline fun Connection.zlexcount(key: String, min: String, max: String, crossinli
  * @return list of elements in the specified range (optionally with
 their scores, in case the `WITHSCORES` option is given).
  */
-inline fun Connection.zrange(key: String, start: Long, stop: Long, withscores: String, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
+inline fun Connection.zrange(key: String, start: Long, stop: Long, withscores: String? = null, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 5)
+    val nullCount = (if(withscores == null) 1 else 0)
+    writeArray(target, 5 - nullCount)
     writeBulkString(target, kw_zrange)
     writeBulkString(target, key)
     writeBulkString(target, start.toString())
     writeBulkString(target, stop.toString())
-    writeBulkString(target, withscores)
+    if(withscores != null) writeBulkString(target, withscores)
     command(target) {r, e -> f(if(r == null || r.isNull) null else r.array, e)}
 }
 
@@ -3684,14 +3744,15 @@ inline fun Connection.zrevrangebylex_limit(key: String, max: String, min: String
  * @return list of elements in the specified score range (optionally
 with their scores).
  */
-inline fun Connection.zrangebyscore(key: String, min: Any, max: Any, withscores: String, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
+inline fun Connection.zrangebyscore(key: String, min: Any, max: Any, withscores: String? = null, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 5)
+    val nullCount = (if(withscores == null) 1 else 0)
+    writeArray(target, 5 - nullCount)
     writeBulkString(target, kw_zrangebyscore)
     writeBulkString(target, key)
     writeBulkString(target, min.toString())
     writeBulkString(target, max.toString())
-    writeBulkString(target, withscores)
+    if(withscores != null) writeBulkString(target, withscores)
     command(target) {r, e -> f(if(r == null || r.isNull) null else r.array, e)}
 }
 
@@ -3701,14 +3762,15 @@ inline fun Connection.zrangebyscore(key: String, min: Any, max: Any, withscores:
  * @return list of elements in the specified score range (optionally
 with their scores).
  */
-inline fun Connection.zrangebyscore_limit(key: String, min: Any, max: Any, withscores: String, limit_offset: Long, limit_count: Long, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
+inline fun Connection.zrangebyscore_limit(key: String, min: Any, max: Any, withscores: String? = null, limit_offset: Long, limit_count: Long, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 5)
+    val nullCount = (if(withscores == null) 1 else 0)
+    writeArray(target, 5 - nullCount)
     writeBulkString(target, kw_zrangebyscore)
     writeBulkString(target, key)
     writeBulkString(target, min.toString())
     writeBulkString(target, max.toString())
-    writeBulkString(target, withscores)
+    if(withscores != null) writeBulkString(target, withscores)
     writeBulkString(target, kw_limit)
     writeBulkString(target, limit_offset.toString())
     writeBulkString(target, limit_count.toString())
@@ -3801,14 +3863,15 @@ inline fun Connection.zremrangebyscore(key: String, min: Any, max: Any, crossinl
  * @return list of elements in the specified range (optionally with
 their scores).
  */
-inline fun Connection.zrevrange(key: String, start: Long, stop: Long, withscores: String, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
+inline fun Connection.zrevrange(key: String, start: Long, stop: Long, withscores: String? = null, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 5)
+    val nullCount = (if(withscores == null) 1 else 0)
+    writeArray(target, 5 - nullCount)
     writeBulkString(target, kw_zrevrange)
     writeBulkString(target, key)
     writeBulkString(target, start.toString())
     writeBulkString(target, stop.toString())
-    writeBulkString(target, withscores)
+    if(withscores != null) writeBulkString(target, withscores)
     command(target) {r, e -> f(if(r == null || r.isNull) null else r.array, e)}
 }
 
@@ -3818,14 +3881,15 @@ inline fun Connection.zrevrange(key: String, start: Long, stop: Long, withscores
  * @return list of elements in the specified score range (optionally
 with their scores).
  */
-inline fun Connection.zrevrangebyscore(key: String, max: Any, min: Any, withscores: String, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
+inline fun Connection.zrevrangebyscore(key: String, max: Any, min: Any, withscores: String? = null, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 5)
+    val nullCount = (if(withscores == null) 1 else 0)
+    writeArray(target, 5 - nullCount)
     writeBulkString(target, kw_zrevrangebyscore)
     writeBulkString(target, key)
     writeBulkString(target, max.toString())
     writeBulkString(target, min.toString())
-    writeBulkString(target, withscores)
+    if(withscores != null) writeBulkString(target, withscores)
     command(target) {r, e -> f(if(r == null || r.isNull) null else r.array, e)}
 }
 
@@ -3835,14 +3899,15 @@ inline fun Connection.zrevrangebyscore(key: String, max: Any, min: Any, withscor
  * @return list of elements in the specified score range (optionally
 with their scores).
  */
-inline fun Connection.zrevrangebyscore_limit(key: String, max: Any, min: Any, withscores: String, limit_offset: Long, limit_count: Long, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
+inline fun Connection.zrevrangebyscore_limit(key: String, max: Any, min: Any, withscores: String? = null, limit_offset: Long, limit_count: Long, crossinline f: (Array<Response>?, Throwable?) -> Unit) {
     val target = ByteBufAllocator.DEFAULT.buffer(32)
-    writeArray(target, 5)
+    val nullCount = (if(withscores == null) 1 else 0)
+    writeArray(target, 5 - nullCount)
     writeBulkString(target, kw_zrevrangebyscore)
     writeBulkString(target, key)
     writeBulkString(target, max.toString())
     writeBulkString(target, min.toString())
-    writeBulkString(target, withscores)
+    if(withscores != null) writeBulkString(target, withscores)
     writeBulkString(target, kw_limit)
     writeBulkString(target, limit_offset.toString())
     writeBulkString(target, limit_count.toString())
