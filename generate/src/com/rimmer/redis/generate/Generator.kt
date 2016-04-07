@@ -224,7 +224,9 @@ fun generateCallbackCommand(builder: Builder) = { c: Command, b: List<CommandBlo
         if(optionalArgs.isNotEmpty()) {
             builder.line("val nullCount = ${optionalArgs.map { "(if(${it.name.filter {it.isJavaIdentifierPart()}} == null) 1 else 0)" }.joinToString(" + ")}")
         }
-        builder.line("writeArray(target, ${c.args.size + c.additionalNames.size + 1}${if(optionalArgs.isNotEmpty()) " - nullCount" else ""})")
+
+        val argCount = c.args.size + c.additionalNames.size + b.size + b.sumBy { it.args.size } + 1
+        builder.line("writeArray(target, $argCount${if(optionalArgs.isNotEmpty()) " - nullCount" else ""})")
         builder.line("writeBulkString(target, kw_${c.name.toLowerCase()})")
 
         for(n in c.additionalNames) {
@@ -336,8 +338,8 @@ fun generateCallbackCommands(target: Writer, targetPackage: String) {
 }
 
 fun main(args: Array<String>) {
-    File("src/com/rimmer/redis/command/").mkdirs()
-    val writer = FileWriter("src/com/rimmer/redis/command/Commands.kt")
+    File("client/src/com/rimmer/redis/command/").mkdirs()
+    val writer = FileWriter("client/src/com/rimmer/redis/command/Commands.kt")
     generateCallbackCommands(writer, "com.rimmer.redis.command")
     writer.close()
 }
