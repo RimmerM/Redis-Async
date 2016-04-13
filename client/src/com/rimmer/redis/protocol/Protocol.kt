@@ -2,7 +2,10 @@ package com.rimmer.redis.protocol
 
 import com.rimmer.redis.command.*
 import io.netty.buffer.ByteBuf
+import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandlerContext
+import io.netty.channel.ChannelInboundHandler
+import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.handler.codec.ReplayingDecoder
 import java.io.IOException
 import java.util.*
@@ -12,12 +15,16 @@ internal class WaitingCommand(val handler: (Response?, Throwable?) -> Unit, val 
 
 class ProtocolHandler(
     val connectCallback: (Connection?, Throwable?) -> Unit
-): ReplayingDecoder<Unit>(), Connection {
+): ChannelInboundHandlerAdapter(), Connection {
+    enum class ReadState {
+        None, SimpleString, Error, Int, BulkString, Array
+    }
+
     override val connected: Boolean get() = currentContext != null && currentContext!!.channel().isActive
     override val idleTime: Long get() = if(responseQueue.isNotEmpty()) 0L else System.nanoTime() - commandEnd
 
     /** Contains in-flight commands waiting for a response. */
-    private val responseQueue: Queue<WaitingCommand> = LinkedList()
+    private val responseQueue: Queue<WaitingCommand> = ArrayDeque()
 
     /** Contains channel listeners if the connection is in channel mode. */
     private val channelListeners = HashMap<Int, (ByteBuf?, Throwable?) -> Unit>()
@@ -33,6 +40,16 @@ class ProtocolHandler(
 
     /** Indicates that the connection is in channel mode and cannot send normal commands. */
     private var isChannel = false
+
+    /** The response type we are currently reading. */
+    private var readState = ReadState.None
+
+    /** The length of the string we are currently reading. */
+    private var stringLength: Int? = null
+    private var arrayLength: Int? = null
+
+    /** The buffer we use to accumulate partial packet data. */
+    private var accumulator: ByteBuf? = null
 
     override fun command(command: ByteBuf, f: (Response?, Throwable?) -> Unit) {
         if(isChannel) {
@@ -75,14 +92,39 @@ class ProtocolHandler(
     }
 
     /** Entry point of incoming traffic; handles reading packets and sending responses. */
-    override fun decode(context: ChannelHandlerContext, packet: ByteBuf, data: MutableList<Any>?) {
-        while(packet.readableBytes() > 0) handleValue(packet)
+    override fun channelRead(context: ChannelHandlerContext, message: Any) {
+        val source = message as ByteBuf
+
+        // If we had leftover data it is added to the beginning of the packet.
+        val packet = if(accumulator == null) {
+            source
+        } else {
+            Unpooled.wrappedBuffer(accumulator, source)
+        }
+
+        // Decode packets until the buffer doesn't contain any more full ones.
+        while(true) {
+            val index = packet.readerIndex()
+            handleValue(packet)
+            if(index == packet.readerIndex() || packet.readableBytes() == 0) break
+        }
+
+        // If there is a partial packet left, we save it until more data is received.
+        if(packet.readableBytes() > 0) {
+            // This will copy a few bytes, but doing so is better than
+            // creating a chain of wrapped buffers holding onto native memory.
+            accumulator = Unpooled.buffer(packet.readableBytes())
+            accumulator!!.writeBytes(packet)
+        } else {
+            accumulator = null
+        }
+
+        // Deallocate the buffer; for wrapped buffers this releases the contained buffers as well.
+        packet.release()
     }
 
     /** Called when the channel becomes invalid. */
     override fun channelInactive(context: ChannelHandlerContext) {
-        super.channelInactive(context)
-
         // Fail any requests that were still pending.
         val exception = IOException("The redis connection was closed.")
         while(responseQueue.isNotEmpty()) {
@@ -92,8 +134,7 @@ class ProtocolHandler(
 
     /** Handles a finished response packet. */
     private fun onResponse(response: Response) {
-        checkpoint()
-
+        readState = ReadState.None
         val array = targetArray.peek()
         if(array == null) {
             val end = System.nanoTime()
@@ -128,7 +169,6 @@ class ProtocolHandler(
 
     /** Sends an error to the client. */
     private fun onError(error: Throwable) {
-        checkpoint()
         val handler = responseQueue.poll()
         if(handler == null) {
             throw IllegalStateException("Received an error response with no associated handler")
@@ -156,52 +196,106 @@ class ProtocolHandler(
     }
 
     private fun handleValue(packet: ByteBuf) {
-        val type = packet.readByte().toInt()
-        when (type) {
-            '+'.toInt() -> handleSimpleString(packet)
-            '-'.toInt() -> handleError(packet)
-            ':'.toInt() -> handleInt(packet)
-            '$'.toInt() -> handleBulkString(packet)
-            '*'.toInt() -> handleArray(packet)
-            else -> throw IllegalArgumentException("Unknown Redis value type '${type.toChar()}'")
+        when(readState) {
+            ReadState.None -> {
+                val type = packet.readByte().toInt()
+                when (type) {
+                    '+'.toInt() -> {
+                        readState = ReadState.SimpleString
+                        handleSimpleString(packet)
+                    }
+                    '-'.toInt() -> {
+                        readState = ReadState.Error
+                        handleError(packet)
+                    }
+                    ':'.toInt() -> {
+                        readState = ReadState.Int
+                        handleInt(packet)
+                    }
+                    '$'.toInt() -> {
+                        readState = ReadState.BulkString
+                        handleBulkString(packet)
+                    }
+                    '*'.toInt() -> {
+                        readState = ReadState.Array
+                        handleArray(packet)
+                    }
+                    else -> throw IllegalArgumentException("Unknown Redis value type '${type.toChar()}'")
+                }
+            }
+            ReadState.SimpleString -> handleSimpleString(packet)
+            ReadState.Error -> handleError(packet)
+            ReadState.Int -> handleInt(packet)
+            ReadState.BulkString -> handleBulkString(packet)
+            ReadState.Array -> handleArray(packet)
         }
     }
 
     private fun handleSimpleString(packet: ByteBuf) {
         val length = packet.bytesBefore('\r'.toByte())
+        if(length == -1 || packet.readableBytes() < length + 2) return
+
         val value = packet.toString(packet.readerIndex(), length, Charsets.UTF_8)
         packet.skipBytes(length + 2)
         onResponse(Response(0, value, null, null, false))
     }
 
     private fun handleInt(packet: ByteBuf) {
-        val int = readInt(packet)
+        val length = packet.bytesBefore('\r'.toByte())
+        if(length == -1 || packet.readableBytes() < length + 2) return
+
+        val int = readInt(packet, length)
         onResponse(Response(int, null, null, null, false))
     }
 
     private fun handleError(packet: ByteBuf) {
         val length = packet.bytesBefore('\r'.toByte())
+        if(length == -1 || packet.readableBytes() < length + 2) return
+
         val errorText = packet.toString(packet.readerIndex(), length, Charsets.UTF_8)
         packet.skipBytes(length + 2)
         onError(RedisException(errorText))
     }
 
     private fun handleBulkString(packet: ByteBuf) {
-        val length = readInt(packet).toInt()
+        if(stringLength == null) {
+            val intLength = packet.bytesBefore('\r'.toByte())
+            if(intLength == -1 || packet.readableBytes() < intLength + 2) return
+
+            val length = readInt(packet, intLength).toInt()
+            stringLength = length
+        }
+
+        val length = stringLength!!
 
         // A length of -1 indicates a null value.
         if(length == -1) {
+            stringLength = null
             onResponse(Response(0, null, null, null, true))
             return
         }
 
+        if(packet.readableBytes() < length + 2) return
+
         val buffer = packet.readSlice(length)
         packet.skipBytes(2)
+
+        stringLength = null
         onResponse(Response(0, null, buffer, null, false))
     }
 
     private fun handleArray(packet: ByteBuf) {
-        val count = readInt(packet).toInt()
+        if(arrayLength == null) {
+            val intLength = packet.bytesBefore('\r'.toByte())
+            if(intLength == -1 || packet.readableBytes() < intLength + 2) return
+
+            val length = readInt(packet, intLength).toInt()
+            arrayLength = length
+        }
+
+        val count = arrayLength!!
+        arrayLength = null
+        readState = ReadState.None
         if(count == -1) {
             // A length of -1 indicates a null value.
             onResponse(Response(0, null, null, null, true))
@@ -212,11 +306,10 @@ class ProtocolHandler(
         }
     }
 
-    private fun readInt(packet: ByteBuf): Long {
+    private fun readInt(packet: ByteBuf, length: Int): Long {
         var value = 0L
         var sign = 1
         val start = packet.readerIndex()
-        val length = packet.bytesBefore('\r'.toByte())
         packet.forEachByte(start, length) {
             if(it == '-'.toByte()) {
                 sign = -1
