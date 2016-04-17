@@ -277,11 +277,12 @@ class ProtocolHandler(
 
         if(packet.readableBytes() < length + 2) return
 
-        val buffer = packet.readSlice(length)
+        val bytes = ByteArray(length)
+        packet.readBytes(bytes)
         packet.skipBytes(2)
 
         stringLength = null
-        onResponse(Response(0, null, buffer, null, false))
+        onResponse(Response(0, null, Unpooled.wrappedBuffer(bytes), null, false))
     }
 
     private fun handleArray(packet: ByteBuf) {
