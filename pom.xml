@@ -15,6 +15,6 @@
     </modules>
 
     <properties>
-        <kotlin.version>1.0.1</kotlin.version>
+        <kotlin.version>1.0.3</kotlin.version>
     </properties>
 </project>
