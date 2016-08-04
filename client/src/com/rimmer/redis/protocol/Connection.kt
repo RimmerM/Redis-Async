@@ -53,6 +53,9 @@ interface Connection {
 
     /** The amount of time this connection has been idle since the last action. */
     val idleTime: Long
+
+    /** The amount of time the current command has been running for. */
+    val busyTime: Long
 }
 
 /**

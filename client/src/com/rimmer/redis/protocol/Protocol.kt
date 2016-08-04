@@ -10,8 +10,7 @@ import io.netty.handler.codec.ReplayingDecoder
 import java.io.IOException
 import java.util.*
 
-internal class ArrayBuilder(var length: Int, val target: Array<Response?>)
-internal class WaitingCommand(val handler: (Response?, Throwable?) -> Unit, val startTime: Long)
+private class ArrayBuilder(var length: Int, val target: Array<Response?>)
 
 class ProtocolHandler(
     val connectCallback: (Connection?, Throwable?) -> Unit
@@ -22,9 +21,10 @@ class ProtocolHandler(
 
     override val connected: Boolean get() = currentContext != null && currentContext!!.channel().isActive
     override val idleTime: Long get() = if(responseQueue.isNotEmpty()) 0L else System.nanoTime() - commandEnd
+    override val busyTime: Long get() = if(responseQueue.isEmpty()) 0L else System.nanoTime() - commandEnd
 
     /** Contains in-flight commands waiting for a response. */
-    private val responseQueue: Queue<WaitingCommand> = ArrayDeque()
+    private val responseQueue: Queue<(Response?, Throwable?) -> Unit> = ArrayDeque()
 
     /** Contains channel listeners if the connection is in channel mode. */
     private val channelListeners = HashMap<Int, (ByteBuf?, Throwable?) -> Unit>()
@@ -56,7 +56,7 @@ class ProtocolHandler(
             throw IllegalArgumentException("Cannot execute normal commands while in channel mode.")
         }
 
-        responseQueue.offer(WaitingCommand(f, System.nanoTime()))
+        responseQueue.offer(f)
         currentContext!!.writeAndFlush(command, currentContext!!.voidPromise())
     }
 
@@ -177,18 +177,18 @@ class ProtocolHandler(
         }
     }
 
-    private fun failCommand(command: WaitingCommand, reason: Throwable) {
+    private fun failCommand(command: (Response?, Throwable?) -> Unit, reason: Throwable) {
         try {
-            command.handler(null, reason)
+            command(null, reason)
         } catch(e: Throwable) {
             println("Exception in Redis command succeed handler:")
             e.printStackTrace()
         }
     }
 
-    private fun succeedCommand(command: WaitingCommand, response: Response) {
+    private fun succeedCommand(command: (Response?, Throwable?) -> Unit, response: Response) {
         try {
-            command.handler(response, null)
+            command(response, null)
         } catch(e: Throwable) {
             println("Exception in Redis command failure handler:")
             e.printStackTrace()
