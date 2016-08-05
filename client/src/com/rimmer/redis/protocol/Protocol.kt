@@ -21,7 +21,7 @@ class ProtocolHandler(
 
     override val connected: Boolean get() = currentContext != null && currentContext!!.channel().isActive
     override val idleTime: Long get() = if(responseQueue.isNotEmpty()) 0L else System.nanoTime() - commandEnd
-    override val busyTime: Long get() = if(responseQueue.isEmpty()) 0L else System.nanoTime() - commandEnd
+    override val busyTime: Long get() = if(responseQueue.isEmpty()) 0L else commandAdded - commandEnd
 
     /** Contains in-flight commands waiting for a response. */
     private val responseQueue: Queue<(Response?, Throwable?) -> Unit> = ArrayDeque()
@@ -37,6 +37,9 @@ class ProtocolHandler(
 
     /** The time the last command returned. */
     private var commandEnd = System.nanoTime()
+
+    /** The time the last command was added. */
+    private var commandAdded = System.nanoTime()
 
     /** Indicates that the connection is in channel mode and cannot send normal commands. */
     private var isChannel = false
@@ -56,6 +59,7 @@ class ProtocolHandler(
             throw IllegalArgumentException("Cannot execute normal commands while in channel mode.")
         }
 
+        commandAdded = System.nanoTime()
         responseQueue.offer(f)
         currentContext!!.writeAndFlush(command, currentContext!!.voidPromise())
     }
@@ -64,6 +68,8 @@ class ProtocolHandler(
         isChannel = true
         val hash = Arrays.hashCode(channel.toByteArray())
         channelListeners[hash] = f
+
+        commandAdded = System.nanoTime()
         val buffer = currentContext!!.alloc().buffer(32)
         val command = if(isPattern) psubscribe(channel, buffer) else subscribe(channel, buffer)
         currentContext!!.writeAndFlush(command)
@@ -72,6 +78,8 @@ class ProtocolHandler(
     override fun unsubscribe(channel: String, isPattern: Boolean) {
         val hash = Arrays.hashCode(channel.toByteArray())
         channelListeners.remove(hash)
+
+        commandAdded = System.nanoTime()
         val buffer = currentContext!!.alloc().buffer(32)
         val command = if(isPattern) punsubscribe(channel, buffer) else unsubscribe(channel, buffer)
         currentContext!!.writeAndFlush(command)
