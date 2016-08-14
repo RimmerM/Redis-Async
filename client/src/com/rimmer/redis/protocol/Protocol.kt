@@ -20,8 +20,8 @@ class ProtocolHandler(
     }
 
     override val connected: Boolean get() = currentContext != null && currentContext!!.channel().isActive
-    override val idleTime: Long get() = if(responseQueue.isNotEmpty()) 0L else System.nanoTime() - commandEnd
-    override val busyTime: Long get() = if(responseQueue.isEmpty()) 0L else commandAdded - commandEnd
+    override fun idleTime(nanoTime: Long) = if(responseQueue.isNotEmpty()) 0L else nanoTime - commandAdded
+    override fun busyTime(nanoTime: Long) = if(responseQueue.isEmpty()) 0L else nanoTime - commandEnd
 
     /** Contains in-flight commands waiting for a response. */
     private val responseQueue: Queue<(Response?, Throwable?) -> Unit> = ArrayDeque()
@@ -59,7 +59,7 @@ class ProtocolHandler(
             throw IllegalArgumentException("Cannot execute normal commands while in channel mode.")
         }
 
-        commandAdded = System.nanoTime()
+        onPreCommand()
         responseQueue.offer(f)
         currentContext!!.writeAndFlush(command, currentContext!!.voidPromise())
     }
@@ -69,7 +69,7 @@ class ProtocolHandler(
         val hash = Arrays.hashCode(channel.toByteArray())
         channelListeners[hash] = f
 
-        commandAdded = System.nanoTime()
+        onPreCommand()
         val buffer = currentContext!!.alloc().buffer(32)
         val command = if(isPattern) psubscribe(channel, buffer) else subscribe(channel, buffer)
         currentContext!!.writeAndFlush(command)
@@ -79,13 +79,13 @@ class ProtocolHandler(
         val hash = Arrays.hashCode(channel.toByteArray())
         channelListeners.remove(hash)
 
-        commandAdded = System.nanoTime()
+        onPreCommand()
         val buffer = currentContext!!.alloc().buffer(32)
         val command = if(isPattern) punsubscribe(channel, buffer) else unsubscribe(channel, buffer)
         currentContext!!.writeAndFlush(command)
     }
 
-    override fun buffer() = currentContext!!.alloc().buffer()
+    override fun buffer(): ByteBuf = currentContext!!.alloc().buffer()
 
     override fun disconnect() {
         val exception = RedisException("Connection is being closed")
@@ -138,6 +138,12 @@ class ProtocolHandler(
         while(responseQueue.isNotEmpty()) {
             failCommand(responseQueue.poll(), exception)
         }
+    }
+
+    /** Updates common state when a command is added. */
+    private fun onPreCommand() {
+        commandAdded = System.nanoTime()
+        if(responseQueue.isEmpty()) commandEnd = commandAdded
     }
 
     /** Handles a finished response packet. */

@@ -52,10 +52,10 @@ interface Connection {
     val connected: Boolean
 
     /** The amount of time this connection has been idle since the last action. */
-    val idleTime: Long
+    fun idleTime(nanoTime: Long): Long
 
     /** The amount of time the current command has been running for. */
-    val busyTime: Long
+    fun busyTime(nanoTime: Long): Long
 }
 
 /**
