@@ -4,9 +4,7 @@ import com.rimmer.redis.command.*
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandlerContext
-import io.netty.channel.ChannelInboundHandler
 import io.netty.channel.ChannelInboundHandlerAdapter
-import io.netty.handler.codec.ReplayingDecoder
 import java.io.IOException
 import java.util.*
 
@@ -183,6 +181,7 @@ class ProtocolHandler(
 
     /** Sends an error to the client. */
     private fun onError(error: Throwable) {
+        readState = ReadState.None
         val handler = responseQueue.poll()
         if(handler == null) {
             throw IllegalStateException("Received an error response with no associated handler")
