@@ -67,7 +67,7 @@ fun generateCommands(command: (Command) -> Unit) {
 
     commands.entrySet().forEach {
         val reader = BufferedReader(InputStreamReader(
-            URL("https://raw.githubusercontent.com/antirez/redis-doc/master/commands/${it.key.replace(' ', '-').toLowerCase()}.md").openStream()
+            URL("https://raw.githubusercontent.com/antirez/redis-doc/master/commands/${it.key.replace(' ', '-').lowercase()}.md").openStream()
         ))
 
         val description = StringBuilder()
@@ -82,30 +82,30 @@ fun generateCommands(command: (Command) -> Unit) {
                 if(type.startsWith("@array-reply")) {
                     returnType = ReturnType.Array
                     val d = type.removePrefix("@array-reply")
-                    if(d.length > 3) returnDesc.appendln(d.drop(2))
+                    if(d.length > 3) returnDesc.appendLine(d.drop(2))
                 } else if(type.startsWith("@bulk-string-reply")) {
                     returnType = ReturnType.BulkString
                     val d = type.removePrefix("@bulk-string-reply")
-                    if(d.length > 3) returnDesc.appendln(d.drop(2))
+                    if(d.length > 3) returnDesc.appendLine(d.drop(2))
                 } else if(type.startsWith("@integer-reply")) {
                     returnType = ReturnType.Integer
                     val d = type.removePrefix("@integer-reply")
-                    if(d.length > 3) returnDesc.appendln(d.drop(2))
+                    if(d.length > 3) returnDesc.appendLine(d.drop(2))
                 } else if(type.startsWith("@simple-string-reply")) {
                     returnType = ReturnType.SimpleString
                     val d = type.removePrefix("@simple-string-reply")
-                    if(d.length > 3) returnDesc.appendln(d.drop(2))
+                    if(d.length > 3) returnDesc.appendLine(d.drop(2))
                 }
 
                 while(true) {
                     val desc = reader.readLine() ?: break
                     if(desc.startsWith("@examples")) break
-                    if(desc.length > 1) returnDesc.appendln(desc)
+                    if(desc.length > 1) returnDesc.appendLine(desc)
                 }
 
                 break
             } else if(line.length > 3) {
-                description.appendln(" * $line")
+                description.appendLine(" * $line")
             }
         }
 
@@ -125,8 +125,8 @@ fun generateCommands(command: (Command) -> Unit) {
             val t = p["type"]
             val optional = p["optional"]?.asBoolean ?: false
 
-            val getType = {t: JsonElement ->
-                when(t.asString) {
+            val getType = { tn: JsonElement ->
+                when(tn.asString) {
                     "string" -> ArgType.String
                     "key" -> ArgType.String
                     "enum" -> ArgType.String
@@ -164,7 +164,7 @@ fun generateCommands(command: (Command) -> Unit) {
             a
         } ?: emptyList<CommandArg>()
 
-        val names = it.key.toLowerCase().split(' ')
+        val names = it.key.lowercase().split(' ')
         val summary = c["summary"].asString
 
         command(Command(names.first(), names.drop(1), summary, complexity, returnType, returnDesc.toString(), args, blocks))
@@ -184,7 +184,7 @@ fun generateCallbackCommand(builder: Builder) = { c: Command, b: List<CommandBlo
     }
     builder.line(" */")
     builder.startLine()
-    builder.append("inline fun Connection.${(listOf(c.name.toLowerCase().let { if(it == "object") "`object`" else it }) + c.additionalNames.map {it.replace('-', '_')} + b.map {it.name.toLowerCase()}).joinToString("_")}(")
+    builder.append("inline fun Connection.${(listOf(c.name.lowercase().let { if(it == "object") "`object`" else it }) + c.additionalNames.map {it.replace('-', '_')} + b.map {it.name.lowercase()}).joinToString("_")}(")
 
     c.args.forEach {
         val type = when(it.type) {
@@ -204,7 +204,7 @@ fun generateCallbackCommand(builder: Builder) = { c: Command, b: List<CommandBlo
                 ArgType.Int -> "Long"
                 else -> "Any"
             }
-            builder.append("${block.name.toLowerCase()}_${it.name.filter { it.isJavaIdentifierPart() }}: $type, ")
+            builder.append("${block.name.lowercase()}_${it.name.filter { it.isJavaIdentifierPart() }}: $type, ")
         }
     }
 
@@ -225,12 +225,12 @@ fun generateCallbackCommand(builder: Builder) = { c: Command, b: List<CommandBlo
             builder.line("val nullCount = ${optionalArgs.map { "(if(${it.name.filter {it.isJavaIdentifierPart()}} == null) 1 else 0)" }.joinToString(" + ")}")
         }
 
-        val argCount = c.args.size + c.additionalNames.size + b.size + b.sumBy { it.args.size } + 1
+        val argCount = c.args.size + c.additionalNames.size + b.size + b.sumOf { it.args.size } + 1
         builder.line("writeArray(target, $argCount${if(optionalArgs.isNotEmpty()) " - nullCount" else ""})")
-        builder.line("writeBulkString(target, kw_${c.name.toLowerCase()})")
+        builder.line("writeBulkString(target, kw_${c.name.lowercase()})")
 
         for(n in c.additionalNames) {
-            builder.line("writeBulkString(target, kw_${n.toLowerCase().replace('-', '_')})")
+            builder.line("writeBulkString(target, kw_${n.lowercase().replace('-', '_')})")
         }
 
         for(a in c.args) {
@@ -247,13 +247,13 @@ fun generateCallbackCommand(builder: Builder) = { c: Command, b: List<CommandBlo
         }
 
         for(block in b) {
-            builder.line("writeBulkString(target, kw_${block.name.toLowerCase()})")
+            builder.line("writeBulkString(target, kw_${block.name.lowercase()})")
             for(a in block.args) {
                 val convert = when(a.type) {
                     ArgType.String, ArgType.Key -> a.name.filter { it.isJavaIdentifierPart() }
                     else -> "${a.name.filter { it.isJavaIdentifierPart() }}.toString()"
                 }
-                builder.line("writeBulkString(target, ${block.name.toLowerCase()}_$convert)")
+                builder.line("writeBulkString(target, ${block.name.lowercase()}_$convert)")
             }
         }
 
@@ -317,9 +317,9 @@ fun generateCallbackCommands(target: Writer, targetPackage: String) {
     val names = HashSet<String>()
 
     generateCommands { c ->
-        names.add(c.name.toLowerCase())
-        names.addAll(c.additionalNames.map {it.toLowerCase()})
-        names.addAll(c.blocks.map {it.name.toLowerCase()})
+        names.add(c.name.lowercase())
+        names.addAll(c.additionalNames.map {it.lowercase()})
+        names.addAll(c.blocks.map {it.name.lowercase()})
 
         generateCallbackCommand(builder)(c, emptyList())
         if(c.blocks.isNotEmpty()) {
@@ -332,7 +332,7 @@ fun generateCallbackCommands(target: Writer, targetPackage: String) {
     builder.newLine()
     for(name in names) {
         val varName = name.replace('-', '_')
-        val keyName = name.toUpperCase()
+        val keyName = name.uppercase()
         builder.line("val kw_$varName = \"$keyName\".toByteArray(Charsets.UTF_8)")
     }
 }

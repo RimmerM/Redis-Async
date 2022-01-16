@@ -34,7 +34,7 @@ enum class Keyword {
     SETSLOT, SLAVES, SLOTS, GETKEYS, REWRITE, OBJECT, SEGFAULT, DEBUG, COUNT_FAILURE_REPORTS, SET_CONFIG_EPOCH;
 
     val bytes: ByteArray
-    init { bytes = name.toLowerCase().toByteArray() }
+    init { bytes = name.lowercase().toByteArray() }
 }
 
 /** Writes the common header of a Redis command. */

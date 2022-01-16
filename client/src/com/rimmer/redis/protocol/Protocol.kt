@@ -213,23 +213,23 @@ class ProtocolHandler(
             ReadState.None -> {
                 val type = packet.readByte().toInt()
                 when (type) {
-                    '+'.toInt() -> {
+                    '+'.code -> {
                         readState = ReadState.SimpleString
                         handleSimpleString(packet)
                     }
-                    '-'.toInt() -> {
+                    '-'.code -> {
                         readState = ReadState.Error
                         handleError(packet)
                     }
-                    ':'.toInt() -> {
+                    ':'.code -> {
                         readState = ReadState.Int
                         handleInt(packet)
                     }
-                    '$'.toInt() -> {
+                    '$'.code -> {
                         readState = ReadState.BulkString
                         handleBulkString(packet)
                     }
-                    '*'.toInt() -> {
+                    '*'.code -> {
                         readState = ReadState.Array
                         handleArray(packet)
                     }
@@ -245,7 +245,7 @@ class ProtocolHandler(
     }
 
     private fun handleSimpleString(packet: ByteBuf) {
-        val length = packet.bytesBefore('\r'.toByte())
+        val length = packet.bytesBefore('\r'.code.toByte())
         if(length == -1 || packet.readableBytes() < length + 2) return
 
         val value = packet.toString(packet.readerIndex(), length, Charsets.UTF_8)
@@ -254,7 +254,7 @@ class ProtocolHandler(
     }
 
     private fun handleInt(packet: ByteBuf) {
-        val length = packet.bytesBefore('\r'.toByte())
+        val length = packet.bytesBefore('\r'.code.toByte())
         if(length == -1 || packet.readableBytes() < length + 2) return
 
         val int = readInt(packet, length)
@@ -262,7 +262,7 @@ class ProtocolHandler(
     }
 
     private fun handleError(packet: ByteBuf) {
-        val length = packet.bytesBefore('\r'.toByte())
+        val length = packet.bytesBefore('\r'.code.toByte())
         if(length == -1 || packet.readableBytes() < length + 2) return
 
         val errorText = packet.toString(packet.readerIndex(), length, Charsets.UTF_8)
@@ -272,7 +272,7 @@ class ProtocolHandler(
 
     private fun handleBulkString(packet: ByteBuf) {
         if(stringLength == null) {
-            val intLength = packet.bytesBefore('\r'.toByte())
+            val intLength = packet.bytesBefore('\r'.code.toByte())
             if(intLength == -1 || packet.readableBytes() < intLength + 2) return
 
             val length = readInt(packet, intLength).toInt()
@@ -300,7 +300,7 @@ class ProtocolHandler(
 
     private fun handleArray(packet: ByteBuf) {
         if(arrayLength == null) {
-            val intLength = packet.bytesBefore('\r'.toByte())
+            val intLength = packet.bytesBefore('\r'.code.toByte())
             if(intLength == -1 || packet.readableBytes() < intLength + 2) return
 
             val length = readInt(packet, intLength).toInt()
@@ -325,10 +325,10 @@ class ProtocolHandler(
         var sign = 1
         val start = packet.readerIndex()
         packet.forEachByte(start, length) {
-            if(it == '-'.toByte()) {
+            if(it == '-'.code.toByte()) {
                 sign = -1
             } else {
-                val v = it - '0'.toByte()
+                val v = it - '0'.code.toByte()
                 if(v < 0 || v > 10) throw RedisException("Invalid response: cannot parse '$it' as integer")
                 value *= 10
                 value += v

@@ -5,15 +5,15 @@ import io.netty.buffer.ByteBuf
 fun writeBulkString(target: ByteBuf, string: String) = writeBulkString(target, string.toByteArray())
 
 fun writeBulkString(target: ByteBuf, bytes: ByteArray) {
-    target.writeByte('$'.toInt())
+    target.writeByte('$'.code)
     writeNewlineNumber(target, bytes.size.toLong())
     target.writeBytes(bytes)
-    target.writeByte('\r'.toInt())
-    target.writeByte('\n'.toInt())
+    target.writeByte('\r'.code)
+    target.writeByte('\n'.code)
 }
 
 fun writeArray(target: ByteBuf, length: Int) {
-    target.writeByte('*'.toInt())
+    target.writeByte('*'.code)
     writeNewlineNumber(target, length.toLong())
 }
 
@@ -48,12 +48,12 @@ private fun writeNumber(value: Long, newline: Boolean): ByteArray {
 
     val bytes = ByteArray(if(newline) end + 2 else end)
     if(newline) {
-        bytes[end] = '\r'.toByte()
-        bytes[end + 1] = '\n'.toByte()
+        bytes[end] = '\r'.code.toByte()
+        bytes[end + 1] = '\n'.code.toByte()
     }
 
     if(negative) {
-        bytes[0] = '-'.toByte()
+        bytes[0] = '-'.code.toByte()
     }
 
     var next = abs
@@ -62,12 +62,12 @@ private fun writeNumber(value: Long, newline: Boolean): ByteArray {
         if(next <= 0) break
         end--
 
-        bytes[end] = ('0'.toLong() + abs % 10).toByte()
+        bytes[end] = ('0'.code.toLong() + abs % 10).toByte()
         abs = next
     }
 
     end--
-    bytes[end] = ('0'.toLong() + abs).toByte()
+    bytes[end] = ('0'.code.toLong() + abs).toByte()
     return bytes
 }
 
